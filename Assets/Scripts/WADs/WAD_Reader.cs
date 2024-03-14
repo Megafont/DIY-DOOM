@@ -53,8 +53,34 @@ public class WAD_Reader
 
         directory.LumpOffset = BitConverter.ToInt32(Read4Bytes(wadData, offset));
         directory.LumpSize = BitConverter.ToInt32(Read4Bytes(wadData, offset + 4));
-        directory.LumpName = System.Text.Encoding.UTF8.GetString(Read8Bytes(wadData, offset + 8));
 
+        directory.LumpName = System.Text.Encoding.UTF8.GetString(Read8Bytes(wadData, offset + 8)).Trim();
+        directory.LumpName = directory.LumpName.Trim('\0'); // This is needed, as unused characters at the end of the lump name are all set to the null character. We need to remove those unnecessary chars from the end of the string.
+        
         return directory;
     }
+
+    public Vector2 ReadVertexData(byte[] wadData, int offset)
+    {
+        Vector2 vertex = new Vector2(BitConverter.ToUInt16(Read2Bytes(wadData, offset)),      
+                                     BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2)));
+
+        return vertex;
+    }
+
+    public LineDef ReadLineDefData(byte[] wadData, int offset)
+    {
+        LineDef lineDef = new LineDef();
+
+        lineDef.StartVertex = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
+        lineDef.EndVertex = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
+        lineDef.Flags = (LineDefFlags) BitConverter.ToUInt16(Read2Bytes(wadData, offset + 4));
+        lineDef.LineType = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
+        lineDef.SectorTag = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
+        lineDef.RightSideDef = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 10));
+        lineDef.LeftSideDef = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 12));
+
+        return lineDef;
+    }
+
 }
