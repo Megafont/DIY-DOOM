@@ -384,7 +384,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1bc93152300e1340a291a623ecbec47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _AutoMapCamera: {fileID: 2080958423}
   _LineRendererPrefab: {fileID: 8482185758200536577, guid: f63a370999a43fa409f68aafdf73a326, type: 3}
+  _PlayerPrefab: {fileID: 6578433107139082918, guid: c02963fc492104740af201cade532c2d, type: 3}
 --- !u!4 &999534662
 Transform:
   m_ObjectHideFlags: 0

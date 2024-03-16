@@ -17,6 +17,8 @@ namespace DIY_DOOM.WADs
 
         private WAD_Reader _Reader;
 
+        private int _MapLumpIndex = -1;
+
 
 
         public WAD_Loader()
@@ -101,19 +103,46 @@ namespace DIY_DOOM.WADs
                 return false;
             }
 
+            if (!ReadMapThings(map))
+            {
+                Debug.LogError($"Failed to load things data for the map ({map.Name})!");
+                map = null;
+                return false;
+            }
+
+            if (!ReadMapNodes(map))
+            {
+                Debug.LogError($"Failed to load nodes data for the map ({map.Name})!");
+                map = null;
+                return false;
+            }
+
 
             return true;
         }
 
         int FindMapIndex(Map map)
         {
+            // Was the map's lump index previously found & cached?
+            if (_MapLumpIndex > -1)
+                return _MapLumpIndex;
+
+
+            // The map's lump index was not previously found and cached, so find it.
             for (int i = 0; i < _WAD_Directories.Count; i++)
             {
                 //Debug.Log($"COMP: [{i}]\"{_WAD_Directories[i].LumpName}\" == \"{map.Name}\"");
                 if (_WAD_Directories[i].LumpName == map.Name)
+                {
+                    // Cache the map's lump index and then return it.
+                    _MapLumpIndex = i;
                     return i;
+                }
             }
 
+
+            // Return -1 as an error code.
+            _MapLumpIndex = -1;
             return -1;
         }
 
@@ -122,7 +151,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load vertices! The map index is invalid!");
+                Debug.LogError("Failed to load vertices! The map's lump index is invalid!");
                 return false;
             }
 
@@ -160,7 +189,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load vertices! The map index is invalid!");
+                Debug.LogError("Failed to load lineDefs! The map's lump index is invalid!");
                 return false;
             }
 
@@ -188,6 +217,80 @@ namespace DIY_DOOM.WADs
 
 
             Debug.Log($"Loaded {lineDefsCount} lineDefs for {map.Name}.");
+
+            return true;
+        }
+
+        bool ReadMapThings(Map map)
+        {
+            int mapIndex = FindMapIndex(map);
+            if (mapIndex == -1)
+            {
+                Debug.LogError("Failed to load things! The map's lump index is invalid!");
+                return false;
+            }
+
+            mapIndex += (int)MapLumpIndices.Things;
+
+            if (_WAD_Directories[mapIndex].LumpName.CompareTo("THINGS") != 0)
+            {
+                Debug.LogError("Failed to load things! The map's things lump index is invalid!");
+                return false;
+            }
+
+
+            int thingSizeInBytes = 10;
+            int thingsCount = _WAD_Directories[mapIndex].LumpSize / thingSizeInBytes;
+
+            ThingDef thing;
+            for (int i = 0; i < thingsCount; i++)
+            {
+                thing = _Reader.ReadThingData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * thingSizeInBytes);
+
+                map.AddThing(thing);
+
+                //thing.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {thingsCount} things for {map.Name}.");
+
+            return true;
+        }
+
+        bool ReadMapNodes(Map map)
+        {
+            int mapIndex = FindMapIndex(map);
+            if (mapIndex == -1)
+            {
+                Debug.LogError("Failed to load nodes! The map's lump index is invalid!");
+                return false;
+            }
+
+            mapIndex += (int)MapLumpIndices.Nodes;
+
+            if (_WAD_Directories[mapIndex].LumpName.CompareTo("NODES") != 0)
+            {
+                Debug.LogError("Failed to load nodes! The map's nodes lump index is invalid!");
+                return false;
+            }
+
+
+            int nodeSizeInBytes = 28;
+            int nodesCount = _WAD_Directories[mapIndex].LumpSize / nodeSizeInBytes;
+
+            NodeDef node;
+            for (int i = 0; i < nodesCount; i++)
+            {
+                node = _Reader.ReadNodeData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * nodeSizeInBytes);
+
+                map.AddNode(node);
+
+                //node.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {nodesCount} nodes for {map.Name}.");
 
             return true;
         }

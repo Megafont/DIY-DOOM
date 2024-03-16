@@ -37,6 +37,13 @@ namespace DIY_DOOM.AutoMap
 
         public void ReturnToPool(LineRenderer lineRenderer)
         {
+            // If this line has more than one line segement, reset it to just one segment (2 points).
+            lineRenderer.positionCount = 2;
+
+            // Make sure loop is off, too.
+            lineRenderer.loop = false;
+
+
             _Pool.Release(lineRenderer);
         }
 

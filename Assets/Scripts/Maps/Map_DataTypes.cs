@@ -6,7 +6,7 @@ using UnityEngine;
 
 
 namespace DIY_DOOM.Maps
-{ 
+{
     public enum MapLumpIndices
     {
         Things = 1,
@@ -63,4 +63,56 @@ namespace DIY_DOOM.Maps
             Debug.Log(new string('-', 256));
         }
     }
+
+    public struct ThingDef
+    {
+        public Vector2 Position;
+        public uint Angle;
+        public uint Type;
+        public uint Flags;
+
+
+        public void DEBUG_Print()
+        {
+            Debug.Log("THING");
+            Debug.Log(new string('-', 256));
+            Debug.Log($"Position: {Position}");
+            Debug.Log($"Angle: {Angle}");
+            Debug.Log($"Type: {Type}");
+            Debug.Log($"Flags: {Flags}");
+            Debug.Log(new string('-', 256));
+        }
+    }
+
+    public struct NodeDef
+    {
+        public Vector2 PartitionStart;
+        public Vector2 DeltaToPartitionEnd;
+
+        public Vector2 RightBox_BottomLeft;
+        public Vector2 RightBox_TopRight;
+
+        public Vector2 LeftBox_BottomLeft;
+        public Vector2 LeftBox_TopRight;
+
+        public int RightChildID;
+        public int LeftChildID;
+
+
+        public void DEBUG_Print()
+        {
+            Debug.Log("NODE");
+            Debug.Log(new string('-', 256));
+            Debug.Log($"Partition Start: {PartitionStart}");
+            Debug.Log($"Delta To Partition End: {DeltaToPartitionEnd}");
+            Debug.Log($"Right Box Bottom Left: {RightBox_BottomLeft}");
+            Debug.Log($"Right Box Top Right: {RightBox_TopRight}");
+            Debug.Log($"Left Box Bottom Left: {LeftBox_BottomLeft}");
+            Debug.Log($"Left Box Top Right: {LeftBox_TopRight}");
+            Debug.Log($"Right Child ID: {RightChildID}");
+            Debug.Log($"Left Child ID: {LeftChildID}");
+            Debug.Log(new string('-', 256));
+        }
+    }
+
 }
