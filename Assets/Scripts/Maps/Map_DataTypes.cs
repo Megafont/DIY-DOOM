@@ -86,15 +86,19 @@ namespace DIY_DOOM.Maps
 
     public struct NodeDef
     {
+        // These two vectors define the line (binary space partition) that is dividing the space this node represents.
         public Vector2 PartitionStart;
-        public Vector2 DeltaToPartitionEnd;
+        public Vector2 DeltaToPartitionEnd; // This represents the distance and direction from the PartitionStart point to the end point of the partition line. So PartitionStart plus this value equals the end point of the line.
 
+        // Opposite corners of the bounding box of the right side of the space partition for this node.
         public Vector2 RightBox_BottomLeft;
         public Vector2 RightBox_TopRight;
 
+        // Opposite corners of the bounding box of the left side of the space partition for this node.
         public Vector2 LeftBox_BottomLeft;
         public Vector2 LeftBox_TopRight;
 
+        // Node IDs of the children of this node.
         public int RightChildID;
         public int LeftChildID;
 

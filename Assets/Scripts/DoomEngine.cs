@@ -49,7 +49,12 @@ namespace DIY_DOOM
             bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + WAD_Path);
             bool loadedMapData = _WAD_Loader.LoadMapData(MapToLoad, out Map map);
 
-            FindObjectOfType<AutoMapRenderer>().DrawMap(map);
+            AutoMapRenderer autoMapRenderer = FindObjectOfType<AutoMapRenderer>();
+            autoMapRenderer.DrawMap(map);
+
+            BSP_Traverser_A traverser = autoMapRenderer.GetComponent<BSP_Traverser_A>();
+            traverser.SetMap(map);
+            traverser.RenderBspNodes();
 
             return loadedWAD && loadedMapData;
         }

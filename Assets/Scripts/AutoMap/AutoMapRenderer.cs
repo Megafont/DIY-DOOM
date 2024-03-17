@@ -71,9 +71,11 @@ namespace DIY_DOOM.AutoMap
         {
             _Map = map;
 
+            ClearAll();
+
             DrawWalls();
             DrawPlayer();
-            DrawBinaryspacePartition(_Map.GetNodeDef(_Map.NodesCount - 1));
+            //DrawBinaryspacePartition(_Map.GetNodeDef(_Map.NodesCount - 1));
         }
 
         public void DrawWalls()
