@@ -40,11 +40,12 @@ namespace DIY_DOOM.Maps
 
     public struct LineDef
     {
-        public int StartVertex;
-        public int EndVertex;
+        public uint StartVertexID;
+        public uint EndVertexID;
         public LineDefFlags Flags;
-        public int LineType;
-        public int SectorTag;
+        public uint LineType;
+        public uint SectorTag;
+
         public int LeftSideDef;
         public int RightSideDef;
 
@@ -53,8 +54,8 @@ namespace DIY_DOOM.Maps
         {
             Debug.Log("LINEDEF");
             Debug.Log(new string('-', 256));
-            Debug.Log($"Start Vertex: {StartVertex}");
-            Debug.Log($"End Vertex: {EndVertex}");
+            Debug.Log($"Start Vertex: {StartVertexID}");
+            Debug.Log($"End Vertex: {EndVertexID}");
             Debug.Log($"Flags: {Flags}");
             Debug.Log($"Line Type: {LineType}");
             Debug.Log($"Sector Tag: {SectorTag}");
@@ -99,8 +100,8 @@ namespace DIY_DOOM.Maps
         public Vector2 LeftBox_TopRight;
 
         // Node IDs of the children of this node.
-        public int RightChildID;
-        public int LeftChildID;
+        public uint RightChildID;
+        public uint LeftChildID;
 
 
         public void DEBUG_Print()
@@ -115,6 +116,52 @@ namespace DIY_DOOM.Maps
             Debug.Log($"Left Box Top Right: {LeftBox_TopRight}");
             Debug.Log($"Right Child ID: {RightChildID}");
             Debug.Log($"Left Child ID: {LeftChildID}");
+            Debug.Log(new string('-', 256));
+        }
+    }
+
+    /// <summary>
+    /// A sub sector is a convex subsection of a sector.
+    /// </summary>
+    public struct SubSectorDef
+    {
+        public uint SegCount;
+        public uint FirstSegID;
+
+
+        public void DEBUG_Print()
+        {
+            Debug.Log("SUBSECTOR");
+            Debug.Log(new string('-', 256));
+            Debug.Log($"Seg Count: {SegCount}");
+            Debug.Log($"First Seg ID: {FirstSegID}");
+            Debug.Log(new string('-', 256));
+        }
+    }
+
+    /// <summary>
+    /// A seg is a segment of a LineDef, or sometimes an entire lineDef.
+    /// </summary>
+    public struct SegDef
+    {
+        public uint StartVertexID;
+        public uint EndVertexID;
+        public int Angle;
+        public uint LineDefID;
+        public uint Direction; // Facing direction: 0 = same as lineDef, and 1 = opposite of lineDef
+        public uint Offset; // Distance from start of lineDef to start of this seg
+
+
+        public void DEBUG_Print()
+        {
+            Debug.Log("SEG");
+            Debug.Log(new string('-', 256));
+            Debug.Log($"Start Vertex: {StartVertexID}");
+            Debug.Log($"End Vertex: {EndVertexID}");
+            Debug.Log($"Angle: {Angle}");
+            Debug.Log($"Line Def ID: {LineDefID}");
+            Debug.Log($"Direction: {Direction}");
+            Debug.Log($"Offset: {Offset}");
             Debug.Log(new string('-', 256));
         }
     }

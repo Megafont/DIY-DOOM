@@ -19,7 +19,7 @@ public class BSP_Traverser_A : MonoBehaviour
 {
     // This constant is used to check the last bit of the node ID to see if it is a leaf node (has no children).
     // 0x8000 in binary is: 1000000000000000
-    private const int SUBSECTOR_IDENTIFIER = 0x8000;
+    private const uint SUBSECTOR_IDENTIFIER = 0x8000;
 
 
     private AutoMapRenderer _AutoMapRenderer;
@@ -42,7 +42,7 @@ public class BSP_Traverser_A : MonoBehaviour
     }
 
 
-    private IEnumerator TraverseAndRenderBspNodes(int nodeID)
+    private IEnumerator TraverseAndRenderBspNodes(uint nodeID)
     {
         yield return new WaitForSeconds(3f);
 
@@ -60,7 +60,6 @@ public class BSP_Traverser_A : MonoBehaviour
 
 
         NodeDef node = _Map.GetNodeDef(nodeID);
-        _AutoMapRenderer.DrawMap(_Map);
         _AutoMapRenderer.DrawBinaryspacePartition(node);
 
 
@@ -75,7 +74,7 @@ public class BSP_Traverser_A : MonoBehaviour
         }
     }
 
-    public void RenderBspNodes(int nodeID)
+    public void RenderBspNodes(uint nodeID)
     {
         StartCoroutine(TraverseAndRenderBspNodes(nodeID));
     }
@@ -84,7 +83,7 @@ public class BSP_Traverser_A : MonoBehaviour
         StartCoroutine(TraverseAndRenderBspNodes(_Map.NodesCount - 1));
     }
 
-    private void RenderSubSector(int subSectorID)
+    private void RenderSubSector(uint subSectorID)
     {
 
     }
@@ -96,7 +95,7 @@ public class BSP_Traverser_A : MonoBehaviour
     /// <param name="point">The point to check.</param>
     /// <param name="nodeID">The ID of the node whose space partition is being checked against.</param>
     /// <returns>True if the point is on the left side of the partition line, or false otherwise.</returns>
-    private bool IsPointOnLeftSide(Vector2 point, int nodeID)
+    private bool IsPointOnLeftSide(Vector2 point, uint nodeID)
     {
         NodeDef node = _Map.GetNodeDef(nodeID);
 

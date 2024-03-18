@@ -3,7 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 
@@ -91,34 +91,58 @@ namespace DIY_DOOM.WADs
 
             if (!ReadMapVertices(map))
             {
-                Debug.LogError($"Failed to load vertices data for the map ({map.Name})!");
-                map = null;
+                DisplayLoadMapDataFailedError("vertices", map);
                 return false;
             }
 
             if (!ReadMapLineDefs(map))
             {
-                Debug.LogError($"Failed to load linedefs data for the map ({map.Name})!");
-                map = null;
+                DisplayLoadMapDataFailedError("lineDefs", map);
                 return false;
             }
 
             if (!ReadMapThings(map))
             {
-                Debug.LogError($"Failed to load things data for the map ({map.Name})!");
-                map = null;
+                DisplayLoadMapDataFailedError("things", map);
                 return false;
             }
 
             if (!ReadMapNodes(map))
             {
-                Debug.LogError($"Failed to load nodes data for the map ({map.Name})!");
-                map = null;
+                DisplayLoadMapDataFailedError("nodes", map);
+                return false;
+            }
+
+            if (!ReadMapSubSectors(map))
+            {
+                DisplayLoadMapDataFailedError("subSectors", map);
+                return false;
+            }
+
+            if (!ReadMapSegs(map))
+            {
+                DisplayLoadMapDataFailedError("segs", map);
                 return false;
             }
 
 
+            // Unload the raw wad data, since we don't need it anymore.
+            UnloadRawWadData();
+
             return true;
+        }
+
+
+        public void DisplayLoadMapDataFailedError(string type, Map map)
+        {
+            Debug.LogError($"Failed to load {type} data for the map ({map.Name})!");
+            map = null;
+        }
+
+        private void UnloadRawWadData()
+        {
+            _WAD_Data = null;
+            _WAD_Directories = null;
         }
 
         int FindMapIndex(Map map)
@@ -173,7 +197,7 @@ namespace DIY_DOOM.WADs
             {
                 vertex = _Reader.ReadVertexData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * vertexSizeInBytes);
 
-                map.AddVertex(vertex);
+                map.AddVertexDef(vertex);
 
                 //Debug.Log($"VERTEX[{i}]: {_WAD_Directories[mapIndex].LumpOffset + i * vertexSizeInBytes}    {vertex}");
             }
@@ -247,7 +271,7 @@ namespace DIY_DOOM.WADs
             {
                 thing = _Reader.ReadThingData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * thingSizeInBytes);
 
-                map.AddThing(thing);
+                map.AddThingDef(thing);
 
                 //thing.DEBUG_Print();
             }
@@ -284,13 +308,87 @@ namespace DIY_DOOM.WADs
             {
                 node = _Reader.ReadNodeData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * nodeSizeInBytes);
 
-                map.AddNode(node);
+                map.AddNodeDef(node);
 
                 //node.DEBUG_Print();
             }
 
 
             Debug.Log($"Loaded {nodesCount} nodes for {map.Name}.");
+
+            return true;
+        }
+
+        bool ReadMapSubSectors(Map map)
+        {
+            int mapIndex = FindMapIndex(map);
+            if (mapIndex == -1)
+            {
+                Debug.LogError("Failed to load subSectors! The map's lump index is invalid!");
+                return false;
+            }
+
+            mapIndex += (int)MapLumpIndices.SubSectors;
+
+            if (_WAD_Directories[mapIndex].LumpName.CompareTo("SSECTORS") != 0)
+            {
+                Debug.LogError("Failed to load subSectors! The map's subSectors lump index is invalid!");
+                return false;
+            }
+
+
+            int subSectorSizeInBytes = 4;
+            int subSectorsCount = _WAD_Directories[mapIndex].LumpSize / subSectorSizeInBytes;
+
+            SubSectorDef subSector;
+            for (int i = 0; i < subSectorsCount; i++)
+            {
+                subSector = _Reader.ReadSubSectorData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * subSectorSizeInBytes);
+
+                map.AddSubSectorDef(subSector);
+
+                //subSector.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {subSectorsCount} subSectors for {map.Name}.");
+
+            return true;
+        }
+
+        bool ReadMapSegs(Map map)
+        {
+            int mapIndex = FindMapIndex(map);
+            if (mapIndex == -1)
+            {
+                Debug.LogError("Failed to load segs! The map's lump index is invalid!");
+                return false;
+            }
+
+            mapIndex += (int)MapLumpIndices.Segs;
+
+            if (_WAD_Directories[mapIndex].LumpName.CompareTo("SEGS") != 0)
+            {
+                Debug.LogError("Failed to load segs! The map's segs lump index is invalid!");
+                return false;
+            }
+
+
+            int segSizeInBytes = 12;
+            int segsCount = _WAD_Directories[mapIndex].LumpSize / segSizeInBytes;
+
+            SegDef seg;
+            for (int i = 0; i < segsCount; i++)
+            {
+                seg = _Reader.ReadSegData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * segSizeInBytes);
+
+                map.AddSegDef(seg);
+
+                seg.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {segsCount} segs for {map.Name}.");
 
             return true;
         }

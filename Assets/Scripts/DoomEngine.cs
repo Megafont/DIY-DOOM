@@ -50,9 +50,12 @@ namespace DIY_DOOM
             bool loadedMapData = _WAD_Loader.LoadMapData(MapToLoad, out Map map);
 
             AutoMapRenderer autoMapRenderer = FindObjectOfType<AutoMapRenderer>();
-            autoMapRenderer.DrawMap(map);
+            autoMapRenderer.DrawMap(map, Color.white);
 
-            BSP_Traverser_A traverser = autoMapRenderer.GetComponent<BSP_Traverser_A>();
+            // Swaping these two lines changes which BSP traverser is used.
+            //BSP_Traverser_A traverser = autoMapRenderer.GetComponent<BSP_Traverser_A>();
+            BSP_Traverser_B traverser = autoMapRenderer.GetComponent<BSP_Traverser_B>();
+
             traverser.SetMap(map);
             traverser.RenderBspNodes();
 

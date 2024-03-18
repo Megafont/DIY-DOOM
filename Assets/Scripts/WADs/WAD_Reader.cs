@@ -12,6 +12,9 @@ namespace DIY_DOOM.WADs
 {
     public class WAD_Reader
     {
+        // BASIC FUNCTIONS FOR READING DATA FROM THE WAD FILE
+        // ========================================================================================================================================================================================================
+
         public byte[] Read2Bytes(byte[] wadData, int offset)
         {
             byte[] bytes2 = new byte[2];
@@ -41,6 +44,9 @@ namespace DIY_DOOM.WADs
 
 
 
+        // FUNCTIONS FOR READING WAD FILE STRUCTURE
+        // ========================================================================================================================================================================================================
+        
         public WAD_Header ReadHeaderData(byte[] wadData, int offset)
         {
             WAD_Header header = new WAD_Header();
@@ -65,6 +71,11 @@ namespace DIY_DOOM.WADs
             return directory;
         }
 
+
+
+        // FUNCTIONS FOR READING LUMPS OF MAP DATA
+        // ========================================================================================================================================================================================================
+
         public Vector2 ReadVertexData(byte[] wadData, int offset)
         {
             Vector2 vertex = new Vector2(BitConverter.ToInt16(Read2Bytes(wadData, offset)),
@@ -77,13 +88,14 @@ namespace DIY_DOOM.WADs
         {
             LineDef lineDef = new LineDef();
 
-            lineDef.StartVertex = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
-            lineDef.EndVertex = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
+            lineDef.StartVertexID = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
+            lineDef.EndVertexID = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
             lineDef.Flags = (LineDefFlags)BitConverter.ToUInt16(Read2Bytes(wadData, offset + 4));
             lineDef.LineType = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
             lineDef.SectorTag = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
-            lineDef.RightSideDef = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 10));
-            lineDef.LeftSideDef = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 12));
+            
+            lineDef.RightSideDef = BitConverter.ToInt16(Read2Bytes(wadData, offset + 10));
+            lineDef.LeftSideDef = BitConverter.ToInt16(Read2Bytes(wadData, offset + 12));
 
             return lineDef;
         }
@@ -141,5 +153,32 @@ namespace DIY_DOOM.WADs
 
             return node;
         }
+
+        public SubSectorDef ReadSubSectorData(byte[] wadData, int offset)
+        {
+            SubSectorDef subSector = new SubSectorDef();
+
+            subSector.SegCount = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
+            subSector.FirstSegID = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
+            
+            return subSector;
+        }
+
+        public SegDef ReadSegData(byte[] wadData, int offset)
+        {
+            SegDef seg = new SegDef();
+
+            seg.StartVertexID = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
+            seg.EndVertexID = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
+            
+            seg.Angle = BitConverter.ToInt16(Read2Bytes(wadData, offset + 4));
+            
+            seg.LineDefID = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
+            seg.Direction = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
+            seg.Offset = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 10));
+
+            return seg;
+        }
+
     }
 }

@@ -7,6 +7,8 @@ using UnityEngine;
 using DIY_DOOM.Maps;
 using DIY_DOOM.AutoMap;
 
+using Random = UnityEngine.Random;
+
 
 /// <summary>
 /// This is the second version of the BSP code in Notes008 in the repo linked in the
@@ -19,7 +21,7 @@ public class BSP_Traverser_B : MonoBehaviour
 {
     // This constant is used to check the last bit of the node ID to see if it is a leaf node (has no children).
     // 0x8000 in binary is: 1000000000000000
-    private const int SUBSECTOR_IDENTIFIER = 0x8000;
+    private const uint SUBSECTOR_IDENTIFIER = 0x8000;
 
 
     private AutoMapRenderer _AutoMapRenderer;
@@ -42,14 +44,16 @@ public class BSP_Traverser_B : MonoBehaviour
     }
 
 
-    private IEnumerator TraverseAndRenderBspNodes(int nodeID)
+    private IEnumerator TraverseAndRenderBspNodes(uint nodeID)
     {
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(1f);
 
-        // Check if this node represents a subsector (aka leaf node).
+
+        // Check if this node represents a subSector (aka leaf node, which has no children).
         if ((nodeID & SUBSECTOR_IDENTIFIER) == SUBSECTOR_IDENTIFIER)
         {
             RenderSubSector(nodeID & (~SUBSECTOR_IDENTIFIER));
+
             yield break;
         }
 
@@ -60,26 +64,23 @@ public class BSP_Traverser_B : MonoBehaviour
 
 
         NodeDef node = _Map.GetNodeDef(nodeID);
-        _AutoMapRenderer.DrawMap(_Map);
-        _AutoMapRenderer.DrawBinaryspacePartition(node);
-
 
         // This code causes this recursive function to process the sub sectors
         // from nearest to farthest. See Notes006 in the repo linked in the
         // readme file in the root folder of this project.
         if (isOnLeft)
         {
-            RenderBspNodes(node.LeftChildID);
-            RenderBspNodes(node.RightChildID);
+            yield return StartCoroutine(TraverseAndRenderBspNodes(node.LeftChildID));
+            yield return StartCoroutine(TraverseAndRenderBspNodes(node.RightChildID));
         }
         else
         {
-            RenderBspNodes(node.RightChildID);
-            RenderBspNodes(node.LeftChildID);
+            yield return StartCoroutine(TraverseAndRenderBspNodes(node.RightChildID));
+            yield return StartCoroutine(TraverseAndRenderBspNodes(node.LeftChildID));
         }
     }
 
-    public void RenderBspNodes(int nodeID)
+    public void RenderBspNodes(uint nodeID)
     {
         StartCoroutine(TraverseAndRenderBspNodes(nodeID));
     }
@@ -88,9 +89,10 @@ public class BSP_Traverser_B : MonoBehaviour
         StartCoroutine(TraverseAndRenderBspNodes(_Map.NodesCount - 1));
     }
 
-    private void RenderSubSector(int subSectorID)
+    private void RenderSubSector(uint subSectorID)
     {
-
+        _AutoMapRenderer.DrawSubSector_Original(_Map.GetSubSectorDef(subSectorID),
+                                                new Color32((byte) Random.Range(0, 256), (byte) Random.Range(0, 256), (byte) Random.Range(0, 256), 255));
     }
 
     /// <summary>
@@ -100,7 +102,7 @@ public class BSP_Traverser_B : MonoBehaviour
     /// <param name="point">The point to check.</param>
     /// <param name="nodeID">The ID of the node whose space partition is being checked against.</param>
     /// <returns>True if the point is on the left side of the partition line, or false otherwise.</returns>
-    private bool IsPointOnLeftSide(Vector2 point, int nodeID)
+    private bool IsPointOnLeftSide(Vector2 point, uint nodeID)
     {
         NodeDef node = _Map.GetNodeDef(nodeID);
 
