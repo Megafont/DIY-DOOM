@@ -9,8 +9,8 @@ namespace DIY_DOOM.WADs
 {
     public struct Directory
     {
-        public int LumpOffset;
-        public int LumpSize;
+        public uint LumpOffset;
+        public uint LumpSize;
         public string LumpName;
 
 
@@ -33,8 +33,8 @@ namespace DIY_DOOM.WADs
         /// </summary>
         public string WAD_Type;
 
-        public int DirectoryCount;
-        public int DirectoryOffset;
+        public uint DirectoryCount;
+        public uint DirectoryOffset;
 
 
         public void DEBUG_Print()

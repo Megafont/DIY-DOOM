@@ -19,6 +19,8 @@ namespace DIY_DOOM.WADs
 
         private int _MapLumpIndex = -1;
 
+        private AssetManager _AssetManager;
+
 
 
         public WAD_Loader()
@@ -71,7 +73,7 @@ namespace DIY_DOOM.WADs
             Directory directory = new Directory();
             for (int i = 0; i < header.DirectoryCount; i++)
             {
-                directory = _Reader.ReadDirectoryData(_WAD_Data, header.DirectoryOffset + i * 16);
+                directory = _Reader.ReadDirectoryData(_WAD_Data, (int) (header.DirectoryOffset + i * 16));
 
                 _WAD_Directories.Add(directory);
 
@@ -125,9 +127,19 @@ namespace DIY_DOOM.WADs
                 return false;
             }
 
+            if (!ReadPaletteData(map))
+            {
+                DisplayLoadMapDataFailedError("palettes", map);
+                return false;
+            }
+
 
             // Unload the raw wad data, since we don't need it anymore.
-            UnloadRawWadData();
+            // NOTE: This is commented out since we need to keep it around for whenever we load patches.
+            //UnloadRawWadData(); 
+
+
+            map.DoFinalProcessing();
 
             return true;
         }
@@ -170,6 +182,24 @@ namespace DIY_DOOM.WADs
             return -1;
         }
 
+        /// <summary>
+        /// This function finds the lump with the specified name and returns it's index.
+        /// </summary>
+        /// <param name="lumpName">The name of the data lump to find.</param>
+        /// <returns>The index of the specified lump, or -1 if it was not found.</returns>
+        private int FindLumpByName(string lumpName)
+        {
+            for (int i = 0; i < _WAD_Directories.Count; i++)
+            {
+                if (_WAD_Directories[i].LumpName == lumpName)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
         bool ReadMapVertices(Map map)
         {
             int mapIndex = FindMapIndex(map);
@@ -189,13 +219,13 @@ namespace DIY_DOOM.WADs
 
 
             int vertexSizeInBytes = 4;
-            int verticesCount = _WAD_Directories[mapIndex].LumpSize / vertexSizeInBytes;
+            int verticesCount = (int) (_WAD_Directories[mapIndex].LumpSize / vertexSizeInBytes);
 
 
-            Vector2 vertex;
+            Vector3 vertex;
             for (int i = 0; i < verticesCount; i++)
             {
-                vertex = _Reader.ReadVertexData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * vertexSizeInBytes);
+                vertex = _Reader.ReadVertexData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * vertexSizeInBytes));
 
                 map.AddVertexDef(vertex);
 
@@ -227,12 +257,12 @@ namespace DIY_DOOM.WADs
 
 
             int lineDefSizeInBytes = 14;
-            int lineDefsCount = _WAD_Directories[mapIndex].LumpSize / lineDefSizeInBytes;
+            int lineDefsCount = (int) (_WAD_Directories[mapIndex].LumpSize / lineDefSizeInBytes);
 
             LineDef lineDef;
             for (int i = 0; i < lineDefsCount; i++)
             {
-                lineDef = _Reader.ReadLineDefData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * lineDefSizeInBytes);
+                lineDef = _Reader.ReadLineDefData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * lineDefSizeInBytes));
 
                 map.AddLineDef(lineDef);
 
@@ -264,12 +294,12 @@ namespace DIY_DOOM.WADs
 
 
             int thingSizeInBytes = 10;
-            int thingsCount = _WAD_Directories[mapIndex].LumpSize / thingSizeInBytes;
+            int thingsCount = (int) (_WAD_Directories[mapIndex].LumpSize / thingSizeInBytes);
 
             ThingDef thing;
             for (int i = 0; i < thingsCount; i++)
             {
-                thing = _Reader.ReadThingData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * thingSizeInBytes);
+                thing = _Reader.ReadThingData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * thingSizeInBytes));
 
                 map.AddThingDef(thing);
 
@@ -301,12 +331,12 @@ namespace DIY_DOOM.WADs
 
 
             int nodeSizeInBytes = 28;
-            int nodesCount = _WAD_Directories[mapIndex].LumpSize / nodeSizeInBytes;
+            int nodesCount = (int) (_WAD_Directories[mapIndex].LumpSize / nodeSizeInBytes);
 
             NodeDef node;
             for (int i = 0; i < nodesCount; i++)
             {
-                node = _Reader.ReadNodeData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * nodeSizeInBytes);
+                node = _Reader.ReadNodeData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * nodeSizeInBytes));
 
                 map.AddNodeDef(node);
 
@@ -338,12 +368,12 @@ namespace DIY_DOOM.WADs
 
 
             int subSectorSizeInBytes = 4;
-            int subSectorsCount = _WAD_Directories[mapIndex].LumpSize / subSectorSizeInBytes;
+            int subSectorsCount = (int) (_WAD_Directories[mapIndex].LumpSize / subSectorSizeInBytes);
 
             SubSectorDef subSector;
             for (int i = 0; i < subSectorsCount; i++)
             {
-                subSector = _Reader.ReadSubSectorData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * subSectorSizeInBytes);
+                subSector = _Reader.ReadSubSectorData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * subSectorSizeInBytes));
 
                 map.AddSubSectorDef(subSector);
 
@@ -375,20 +405,99 @@ namespace DIY_DOOM.WADs
 
 
             int segSizeInBytes = 12;
-            int segsCount = _WAD_Directories[mapIndex].LumpSize / segSizeInBytes;
+            int segsCount = (int) (_WAD_Directories[mapIndex].LumpSize / segSizeInBytes);
 
             SegDef seg;
             for (int i = 0; i < segsCount; i++)
             {
-                seg = _Reader.ReadSegData(_WAD_Data, _WAD_Directories[mapIndex].LumpOffset + i * segSizeInBytes);
+                seg = _Reader.ReadSegData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * segSizeInBytes));
 
                 map.AddSegDef(seg);
 
-                seg.DEBUG_Print();
+                //seg.DEBUG_Print();
             }
 
 
             Debug.Log($"Loaded {segsCount} segs for {map.Name}.");
+
+            return true;
+        }
+
+        bool ReadPaletteData(Map map)
+        {
+            if (_AssetManager == null)
+                _AssetManager = AssetManager.Instance;
+
+
+            int palettesLumpIndex = FindLumpByName("PLAYPAL");
+            if (_WAD_Directories[palettesLumpIndex].LumpName.CompareTo("PLAYPAL") != 0)
+            {
+                Debug.LogError("Failed to load palettes! The palettes lump index is invalid!");
+                return false;
+            }
+
+
+            int paletteSizeInBytes = 256 * 3;
+            int palettesCount = (int) (_WAD_Directories[palettesLumpIndex].LumpSize / paletteSizeInBytes);
+
+            PaletteDef palette;
+            for (int i = 0; i < palettesCount; i++)
+            {
+                palette = _Reader.ReadPaletteData(_WAD_Data, (int) (_WAD_Directories[palettesLumpIndex].LumpOffset + i * paletteSizeInBytes));
+
+                _AssetManager.AddPalette(palette);
+
+                //palette.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {palettesCount} palettes.");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Loads a texture.
+        /// </summary>
+        /// <param name="map">The map we're loading.</param>
+        /// <returns>True if sueccessfull or false otherwise.</returns>
+        public bool ReadPatchData(string patchName, out Patch patch)
+        {
+            // This just sets the variable in case we fail to read in the specified patch and thus return earl
+            patch = new Patch("DUMMY", new WAD_PatchHeader());
+
+
+            int patchLumpIndex = FindLumpByName(patchName);
+            if (_WAD_Directories[patchLumpIndex].LumpName.CompareTo(patchName) != 0)
+            {
+                Debug.LogError("Failed to load patch! The patch's lump index is invalid!");
+                return false;
+            }
+
+
+            WAD_PatchHeader patchHeader =_Reader.ReadPatchHeader(_WAD_Data, (int) _WAD_Directories[patchLumpIndex].LumpOffset);
+
+
+            patch = new Patch(patchName, patchHeader);
+
+            WAD_PatchColumn patchColumn = new WAD_PatchColumn();
+            for (int i = 0; i < patchHeader.Width; i++)
+            {
+                int offset = (int) (_WAD_Directories[patchLumpIndex].LumpOffset + patchHeader.GetColumnOffset(i));
+
+                while (patchColumn.TopDelta != 0xFF)
+                {
+                    patchColumn = _Reader.ReadPatchColumn(_WAD_Data, offset, out int nextColumnOffset);
+                    offset = nextColumnOffset;
+                    patch.AddPatchColumn(patchColumn);
+                }
+
+                // Reset this so the while loop can run again.
+                patchColumn.TopDelta = 0;
+            }
+            
+
+            Debug.Log($"Loaded patch \"{patchName}\".");
 
             return true;
         }
@@ -398,6 +507,7 @@ namespace DIY_DOOM.WADs
             _WAD_Data = null;
             _WAD_Directories = null;
         }
+
 
     }
 }

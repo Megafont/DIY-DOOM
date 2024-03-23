@@ -110,14 +110,8 @@ namespace DIY_DOOM.AutoMap
             {
                 LineDef lineDef = _Map.GetLineDef(i);
 
-                Vector2 start = _Map.GetVertex(lineDef.StartVertexID);
-                Vector2 end = _Map.GetVertex(lineDef.EndVertexID);
-
-                start = MapUtils.ScaleAndAdjustRawDoomPoint(start, _Map.AutoMapScaleFactor);
-                end = MapUtils.ScaleAndAdjustRawDoomPoint(end,_Map.AutoMapScaleFactor);
-
-                DrawLine(MapUtils.Point2dTo3dXZ(start),
-                         MapUtils.Point2dTo3dXZ(end),
+                DrawLine(_Map.GetVertex(lineDef.StartVertexID),
+                         _Map.GetVertex(lineDef.EndVertexID),
                          color,
                          yOffset);
             }
@@ -127,34 +121,34 @@ namespace DIY_DOOM.AutoMap
         {
             
             //  RIGHT BOX / SPACE PARTITION
-            Vector2 rightBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_BottomLeft, _Map.AutoMapScaleFactor);
-            Vector2 rightBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_TopRight, _Map.AutoMapScaleFactor);
+            Vector2 rightBox_BottomLeft = node.RightBox_BottomLeft;
+            Vector2 rightBox_TopRight = node.RightBox_TopRight;
 
 
             // LEFT BOX / SPACE PARTITION
-            Vector2 leftBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_BottomLeft, _Map.AutoMapScaleFactor);
-            Vector2 leftBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_TopRight, _Map.AutoMapScaleFactor);
+            Vector2 leftBox_BottomLeft = node.LeftBox_BottomLeft;
+            Vector2 leftBox_TopRight = node.LeftBox_TopRight;
 
 
             // Render the boxes.
-            DrawBox(MapUtils.Point2dTo3dXZ(rightBox_BottomLeft),
-                    MapUtils.Point2dTo3dXZ(rightBox_TopRight), 
+            DrawBox(rightBox_BottomLeft,
+                    rightBox_TopRight, 
                     Color.green,
                     LINE_DEPTH_INCREMENT * 1f);
-            DrawBox(MapUtils.Point2dTo3dXZ(leftBox_BottomLeft),
-                    MapUtils.Point2dTo3dXZ(leftBox_TopRight), 
+            DrawBox(leftBox_BottomLeft,
+                    leftBox_TopRight, 
                     Color.red,
                     LINE_DEPTH_INCREMENT * 2f);
 
 
 
             // THE SEPARATOR LINE THAT THE SPACE PARTITION IS BASED ON
-            Vector2 partitionStart = MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionStart, _Map.AutoMapScaleFactor);
-            Vector2 partitionEnd = MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionStart + node.DeltaToPartitionEnd, _Map.AutoMapScaleFactor);
+            Vector2 partitionStart = node.PartitionStart;
+            Vector2 partitionEnd = node.PartitionStart + node.DeltaToPartitionEnd;
 
             // Render the line.
-            DrawLine(MapUtils.Point2dTo3dXZ(partitionStart), 
-                     MapUtils.Point2dTo3dXZ(partitionEnd), 
+            DrawLine(partitionStart, 
+                     partitionEnd, 
                      Color.blue,
                      LINE_DEPTH_INCREMENT * 3f);
         }
@@ -169,23 +163,21 @@ namespace DIY_DOOM.AutoMap
         {
             List<Vector3> vertices = new List<Vector3>();
 
-            SegDef curSeg, nextSeg;
+            SegDef curSeg;
             Vector3 curStart = Vector3.zero;
             Vector3 curEnd = Vector3.zero;
             for (uint i = 0; i < subSector.SegCount; i++)
             {                
                 curSeg = _Map.GetSegDef(subSector.FirstSegID + i);
 
-                curStart = MapUtils.Point2dTo3dXZ(MapUtils.ScaleAndAdjustRawDoomPoint(_Map.GetVertex(curSeg.StartVertexID), _Map.AutoMapScaleFactor));
-                curEnd = MapUtils.Point2dTo3dXZ(MapUtils.ScaleAndAdjustRawDoomPoint(_Map.GetVertex(curSeg.EndVertexID), _Map.AutoMapScaleFactor));
+                curStart = _Map.GetVertex(curSeg.StartVertexID);
+                curEnd = _Map.GetVertex(curSeg.EndVertexID);
 
                 LineRenderer r = DrawLine(curStart, curEnd, color, LINE_DEPTH_INCREMENT * 4f);
 
                 vertices.Add(curStart);
                 vertices.Add(curEnd);
             }
-
-
             
         }
 
@@ -223,8 +215,8 @@ namespace DIY_DOOM.AutoMap
             {
                 SegDef curSeg = _Map.GetSegDef(subSector.FirstSegID + i);
 
-                Vector3 curSegStart = MapUtils.Point2dTo3dXZ(MapUtils.ScaleAndAdjustRawDoomPoint(_Map.GetVertex(curSeg.StartVertexID), _Map.AutoMapScaleFactor));
-                Vector3 curSegEnd = MapUtils.Point2dTo3dXZ(MapUtils.ScaleAndAdjustRawDoomPoint(_Map.GetVertex(curSeg.EndVertexID), _Map.AutoMapScaleFactor));
+                Vector3 curSegStart = _Map.GetVertex(curSeg.StartVertexID);
+                Vector3 curSegEnd = _Map.GetVertex(curSeg.EndVertexID);
 
                 vertsUnsorted.Add(curSegStart);
                 //vertsUnsorted.Add(curSegEnd);
@@ -302,9 +294,7 @@ namespace DIY_DOOM.AutoMap
 
         public void DrawPlayer()
         {
-            Vector2 position = MapUtils.ScaleAndAdjustRawDoomPoint(_Map.Player1Spawn.Position, _Map.AutoMapScaleFactor);
-
-            _PlayerObject.transform.position = MapUtils.Point2dTo3dXZ(position);
+            _PlayerObject.transform.position = _Map.GetPlayerSpawn(0).Position;
             _PlayerObject.SetActive(true);
         }
 

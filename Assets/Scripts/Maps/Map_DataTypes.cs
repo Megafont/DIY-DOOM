@@ -67,7 +67,7 @@ namespace DIY_DOOM.Maps
 
     public struct ThingDef
     {
-        public Vector2 Position;
+        public Vector3 Position;
         public uint Angle;
         public uint Type;
         public uint Flags;
@@ -88,16 +88,17 @@ namespace DIY_DOOM.Maps
     public struct NodeDef
     {
         // These two vectors define the line (binary space partition) that is dividing the space this node represents.
-        public Vector2 PartitionStart;
-        public Vector2 DeltaToPartitionEnd; // This represents the distance and direction from the PartitionStart point to the end point of the partition line. So PartitionStart plus this value equals the end point of the line.
-
+        public Vector3 PartitionStart;
+        public Vector3 PartitionEnd;
+        public Vector3 DeltaToPartitionEnd; // This represents the distance and direction from the PartitionStart point to the end point of the partition line. So PartitionStart plus this value equals the end point of the line.
+        
         // Opposite corners of the bounding box of the right side of the space partition for this node.
-        public Vector2 RightBox_BottomLeft;
-        public Vector2 RightBox_TopRight;
+        public Vector3 RightBox_BottomLeft;
+        public Vector3 RightBox_TopRight;
 
         // Opposite corners of the bounding box of the left side of the space partition for this node.
-        public Vector2 LeftBox_BottomLeft;
-        public Vector2 LeftBox_TopRight;
+        public Vector3 LeftBox_BottomLeft;
+        public Vector3 LeftBox_TopRight;
 
         // Node IDs of the children of this node.
         public uint RightChildID;
@@ -165,5 +166,136 @@ namespace DIY_DOOM.Maps
             Debug.Log(new string('-', 256));
         }
     }
+
+    /// <summary>
+    /// This struct holds a 256 color DOOM palette.
+    /// </summary>
+    public struct PaletteDef
+    {
+        private Color32[] _Colors;
+
+
+
+        public PaletteDef(Color32[] colors)
+        {
+            _Colors = colors;
+        }
+
+
+
+        public Color32 this[int i]
+        {
+            get
+            {
+                return _Colors[i];
+            }
+            set 
+            { 
+                _Colors[i] = value;
+            }
+        }
+    }
+
+
+    // TEXTURE RELATED TYPES
+    // ========================================================================================================================================================================================================
+
+    public struct WAD_PatchHeader
+    {
+        public uint Width;
+        public uint Height;
+        public int X_Offset;
+        public int Y_Offset;
+        
+        private uint[] _ColumnOffsets;
+
+
+
+        public void SetColumnOffsets(uint[] columnOffsets)
+        {
+            _ColumnOffsets = columnOffsets;
+        }
+
+        public uint GetColumnOffset(int index)
+        {
+            return _ColumnOffsets[index];
+        }
+
+        public void DEBUG_Print(bool printColumnOffsets = false)
+        {
+            Debug.Log("PATCH HEADER");
+            Debug.Log(new string('-', 256));
+            Debug.Log($"Width: {Width}");
+            Debug.Log($"Height: {Height}");
+            Debug.Log($"X Offset: {X_Offset}");
+            Debug.Log($"Y Offset: {Y_Offset}");
+
+            if (printColumnOffsets)
+            {
+                Debug.Log("COLUMN OFFSETS:");
+                for (int i = 0; i < _ColumnOffsets.Length; i++)
+                {
+                    Debug.Log($"[{i}]: {_ColumnOffsets[i]}");
+                }
+            }
+
+            Debug.Log(new string('-', 256));
+        }
+
+
+        public int GetColumnOffsetsCount { get {  return _ColumnOffsets.Length;} }
+    }
+
+    public struct WAD_PatchColumn
+    {
+        public byte TopDelta;
+        public byte Length;
+        public byte PaddingPre;
+        public byte PaddingPost;
+
+
+        private byte[] _ColumnData;
+
+
+        public void DEBUG_Print()
+        {
+            Debug.Log("PATCH COLUMN");
+            Debug.Log(new string('-', 256));
+            Debug.Log($"Top Delta: {TopDelta}");
+            Debug.Log($"Length: {Length}");
+            Debug.Log($"Padding Pre: {PaddingPre}");
+            Debug.Log($"Padding Post: {PaddingPost}");
+
+            Debug.Log("COLUMN DATA:");
+            string colData = "";
+            for (int i = 0; i < _ColumnData.Length; i++)
+            {
+                colData += $"{(int) _ColumnData[i]} ";
+            }
+            Debug.Log(colData);
+
+            Debug.Log(new string('-', 256));
+        }
+
+        public void SetColumnData(byte[] columnData)
+        {
+            _ColumnData = columnData;
+        }
+
+
+
+        public byte this[int i]
+        {
+            get
+            {
+                return _ColumnData[i];
+            }
+            set
+            {
+                _ColumnData[i] = value;
+            }
+        }   
+    }
+
 
 }

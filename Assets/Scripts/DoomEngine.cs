@@ -1,16 +1,19 @@
-using DIY_DOOM.AutoMap;
-using DIY_DOOM.Maps;
-using DIY_DOOM.WADs;
 using System.Collections;
 using System.Collections.Generic;
 
 using UnityEngine;
+
+using DIY_DOOM.AutoMap;
+using DIY_DOOM.Maps;
+using DIY_DOOM.WADs;
 
 
 namespace DIY_DOOM
 {
     public class DoomEngine : MonoBehaviour
     {
+        public MeshRenderer TextureTest;
+
         [Tooltip("This is a relative path to the WAD to load. It is relative to Application.persistantDataPath.")]
         [SerializeField]
         private string WAD_Path = "WADS/DOOM.wad";
@@ -20,6 +23,7 @@ namespace DIY_DOOM
         private string MapToLoad = "E1M1";
 
 
+        private AssetManager _AssetManager;
         private WAD_Loader _WAD_Loader;
         private Map _Map;
 
@@ -30,6 +34,7 @@ namespace DIY_DOOM
         private void Awake()
         {
             _WAD_Loader = new WAD_Loader();
+            _AssetManager = new AssetManager(_WAD_Loader);
         }
 
         // Start is called before the first frame update
@@ -48,6 +53,9 @@ namespace DIY_DOOM
         {
             bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + WAD_Path);
             bool loadedMapData = _WAD_Loader.LoadMapData(MapToLoad, out Map map);
+
+            //Texture2D tex = _WAD_Loader.Patch.RenderToTexture2D(map.GetPaletteDef(0));
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
 
             AutoMapRenderer autoMapRenderer = FindObjectOfType<AutoMapRenderer>();
             autoMapRenderer.DrawMap(map, Color.white);

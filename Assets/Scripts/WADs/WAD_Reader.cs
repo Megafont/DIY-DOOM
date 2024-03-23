@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Analytics;
 
 using DIY_DOOM.Maps;
+using UnityEditor;
 
 
 namespace DIY_DOOM.WADs
@@ -52,8 +53,8 @@ namespace DIY_DOOM.WADs
             WAD_Header header = new WAD_Header();
 
             header.WAD_Type = System.Text.Encoding.UTF8.GetString(Read4Bytes(wadData, offset));
-            header.DirectoryCount = BitConverter.ToInt32(Read4Bytes(wadData, offset + 4));
-            header.DirectoryOffset = BitConverter.ToInt32(Read4Bytes(wadData, offset + 8));
+            header.DirectoryCount = BitConverter.ToUInt32(Read4Bytes(wadData, offset + 4));
+            header.DirectoryOffset = BitConverter.ToUInt32(Read4Bytes(wadData, offset + 8));
 
             return header;
         }
@@ -62,8 +63,8 @@ namespace DIY_DOOM.WADs
         {
             Directory directory = new Directory();
 
-            directory.LumpOffset = BitConverter.ToInt32(Read4Bytes(wadData, offset));
-            directory.LumpSize = BitConverter.ToInt32(Read4Bytes(wadData, offset + 4));
+            directory.LumpOffset = BitConverter.ToUInt32(Read4Bytes(wadData, offset));
+            directory.LumpSize = BitConverter.ToUInt32(Read4Bytes(wadData, offset + 4));
 
             directory.LumpName = System.Text.Encoding.UTF8.GetString(Read8Bytes(wadData, offset + 8)).Trim();
             directory.LumpName = directory.LumpName.Trim('\0'); // This is needed, as unused characters at the end of the lump name are all set to the null character. We need to remove those unnecessary chars from the end of the string.
@@ -76,10 +77,10 @@ namespace DIY_DOOM.WADs
         // FUNCTIONS FOR READING LUMPS OF MAP DATA
         // ========================================================================================================================================================================================================
 
-        public Vector2 ReadVertexData(byte[] wadData, int offset)
+        public Vector3 ReadVertexData(byte[] wadData, int offset)
         {
-            Vector2 vertex = new Vector2(BitConverter.ToInt16(Read2Bytes(wadData, offset)),
-                                         BitConverter.ToInt16(Read2Bytes(wadData, offset + 2)));
+            Vector3 vertex = MapUtils.Point2dTo3dXZ(BitConverter.ToInt16(Read2Bytes(wadData, offset)),
+                                                    BitConverter.ToInt16(Read2Bytes(wadData, offset + 2)));
 
             return vertex;
         }
@@ -103,11 +104,10 @@ namespace DIY_DOOM.WADs
         public ThingDef ReadThingData(byte[] wadData, int offset)
         {
             ThingDef thing = new ThingDef();
-
-            Vector2 position = new Vector2();
-            position.x = BitConverter.ToInt16(Read2Bytes(wadData, offset));
-            position.y = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
-            thing.Position = position;
+            
+            float x = BitConverter.ToInt16(Read2Bytes(wadData, offset));
+            float y = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
+            thing.Position = MapUtils.Point2dTo3dXZ(x, y);
 
             thing.Angle = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 4));
             thing.Type = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
@@ -120,32 +120,30 @@ namespace DIY_DOOM.WADs
         {
             NodeDef node = new NodeDef();
 
-            Vector2 v = new Vector2();
-            v.x = BitConverter.ToInt16(Read2Bytes(wadData, offset));
-            v.y = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
-            node.PartitionStart = v;
-
-            v = new Vector2();
-            v.x = BitConverter.ToInt16(Read2Bytes(wadData, offset + 4));
-            v.y = BitConverter.ToInt16(Read2Bytes(wadData, offset + 6));
-            node.DeltaToPartitionEnd = v;
-
+            float x = BitConverter.ToInt16(Read2Bytes(wadData, offset));
+            float y = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
+            node.PartitionStart = MapUtils.Point2dTo3dXZ(x, y);
+            
+            x = BitConverter.ToInt16(Read2Bytes(wadData, offset + 4));
+            y = BitConverter.ToInt16(Read2Bytes(wadData, offset + 6));
+            node.DeltaToPartitionEnd = MapUtils.Point2dTo3dXZ(x, y);
+            node.PartitionEnd = node.PartitionStart + node.DeltaToPartitionEnd;
 
             int RightBox_Top = BitConverter.ToInt16(Read2Bytes(wadData, offset + 8));
             int RightBox_Bottom = BitConverter.ToInt16(Read2Bytes(wadData, offset + 10));
             int RightBox_Left = BitConverter.ToInt16(Read2Bytes(wadData, offset + 12));
             int RightBox_Right = BitConverter.ToInt16(Read2Bytes(wadData, offset + 14));
 
-            node.RightBox_BottomLeft = new Vector2(RightBox_Left, RightBox_Bottom);
-            node.RightBox_TopRight = new Vector2(RightBox_Right, RightBox_Top);
+            node.RightBox_BottomLeft = MapUtils.Point2dTo3dXZ(RightBox_Left, RightBox_Bottom);
+            node.RightBox_TopRight = MapUtils.Point2dTo3dXZ(RightBox_Right, RightBox_Top);
 
             int LeftBox_Top = BitConverter.ToInt16(Read2Bytes(wadData, offset + 16));
             int LeftBox_Bottom = BitConverter.ToInt16(Read2Bytes(wadData, offset + 18));
             int LeftBox_Left = BitConverter.ToInt16(Read2Bytes(wadData, offset + 20));
             int LeftBox_Right = BitConverter.ToInt16(Read2Bytes(wadData, offset + 22));
 
-            node.LeftBox_BottomLeft = new Vector2(LeftBox_Left, LeftBox_Bottom);
-            node.LeftBox_TopRight = new Vector2(LeftBox_Right, LeftBox_Top);
+            node.LeftBox_BottomLeft = MapUtils.Point2dTo3dXZ(LeftBox_Left, LeftBox_Bottom);
+            node.LeftBox_TopRight = MapUtils.Point2dTo3dXZ(LeftBox_Right, LeftBox_Top);
 
 
             node.RightChildID = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 24));
@@ -180,5 +178,78 @@ namespace DIY_DOOM.WADs
             return seg;
         }
 
+        public PaletteDef ReadPaletteData(byte[] wadData, int offset)
+        {
+            Color32[] colors = new Color32[256];
+
+            for (int i = 0; i < 256; i++)
+            {
+                colors[i] = new Color32(wadData[offset++], 
+                                        wadData[offset++], 
+                                        wadData[offset++],
+                                        255); // Full alpha.
+            }
+
+
+            PaletteDef palette = new PaletteDef(colors);
+
+            return palette;
+        }
+
+        public WAD_PatchHeader ReadPatchHeader(byte[] wadData, int offset) 
+        { 
+            WAD_PatchHeader patchHeader = new WAD_PatchHeader();
+
+            patchHeader.Width = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
+            patchHeader.Height = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
+
+            patchHeader.X_Offset = BitConverter.ToInt16(Read2Bytes(wadData, offset + 4));
+            patchHeader.Y_Offset = BitConverter.ToInt16(Read2Bytes(wadData, offset + 6));
+
+
+            uint[] columnOffsets = new uint[patchHeader.Width];
+
+            offset += 8;
+            for (int i = 0; i < patchHeader.Width; i++)
+            {
+                columnOffsets[i] = BitConverter.ToUInt32(Read4Bytes(wadData, offset));
+                offset += 4;
+            }
+
+            patchHeader.SetColumnOffsets(columnOffsets);
+
+            //patchHeader.DEBUG_Print(false);
+            
+            return patchHeader;
+        }
+
+        public WAD_PatchColumn ReadPatchColumn(byte[] wadData, int offset, out int nextColumnOffset)
+        {
+            WAD_PatchColumn patchColumn = new WAD_PatchColumn();
+
+            patchColumn.TopDelta = wadData[offset++];
+            if (patchColumn.TopDelta != 0xFF)
+            {
+                patchColumn.Length = wadData[offset++];
+                patchColumn.PaddingPre = wadData[offset++];
+
+                byte[] columnData = new byte[patchColumn.Length];
+                for (int i = 0; i < patchColumn.Length; i++)
+                {
+                    columnData[i] = wadData[offset++];
+                }
+
+                patchColumn.PaddingPost = wadData[offset++];
+
+                patchColumn.SetColumnData(columnData);
+
+                //patchColumn.DEBUG_Print();
+            }
+
+
+            nextColumnOffset = offset;
+
+            return patchColumn;
+        }
     }
 }

@@ -46,7 +46,7 @@ public class BSP_Traverser_B : MonoBehaviour
 
     private IEnumerator TraverseAndRenderBspNodes(uint nodeID)
     {
-        yield return new WaitForSeconds(1f);
+        //yield return new WaitForSeconds(1f);
 
 
         // Check if this node represents a subSector (aka leaf node, which has no children).
@@ -59,7 +59,7 @@ public class BSP_Traverser_B : MonoBehaviour
 
 
         // Check if the player is on the left side of this node's binary space partition.
-        bool isOnLeft = IsPointOnLeftSide(MapUtils.ScaleAndAdjustRawDoomPoint(_Map.Player1Spawn.Position, _Map.AutoMapScaleFactor), 
+        bool isOnLeft = IsPointOnLeftSide(_Map.GetPlayerSpawn(0).Position, 
                                           nodeID);
 
 
@@ -102,19 +102,17 @@ public class BSP_Traverser_B : MonoBehaviour
     /// <param name="point">The point to check.</param>
     /// <param name="nodeID">The ID of the node whose space partition is being checked against.</param>
     /// <returns>True if the point is on the left side of the partition line, or false otherwise.</returns>
-    private bool IsPointOnLeftSide(Vector2 point, uint nodeID)
+    private bool IsPointOnLeftSide(Vector3 point, uint nodeID)
     {
         NodeDef node = _Map.GetNodeDef(nodeID);
 
-        Vector2 pointToPartition = point - MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionStart, _Map.AutoMapScaleFactor);
+        Vector3 pointToPartition = MapUtils.Point3dToFlattened3D(point - node.PartitionStart);
 
-        Vector2 spacePartitionLine = MapUtils.ScaleAndAdjustRawDoomPoint(node.DeltaToPartitionEnd, 
-                                                                         _Map.AutoMapScaleFactor);
+        Vector3 spacePartitionLine = MapUtils.Point3dToFlattened3D(node.DeltaToPartitionEnd);
 
 
       
-        return Vector3.Cross(MapUtils.Point2dTo3dXZ(spacePartitionLine), 
-                             MapUtils.Point2dTo3dXZ(pointToPartition)).y <= 0;
+        return Vector3.Cross(spacePartitionLine, pointToPartition).y <= 0;
 
 
         // This line code how he calculates the cross product.

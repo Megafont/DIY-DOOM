@@ -26,6 +26,21 @@ namespace DIY_DOOM.Maps
         {
             return new Vector3(point2D.x, yOffset, point2D.y);
         }
+
+        public static Vector3 Point2dTo3dXZ(float x, float y, float yOffset = 0f)
+        {
+            return new Vector3(x, yOffset, y);
+        }
+
+        /// <summary>
+        /// This function sets the y value to 0, so we have only the horizontal components of the vector left.
+        /// </summary>
+        /// <param name="point">The vector to flatten.</param>
+        /// <returns>The flattened vector.</returns>
+        public static Vector3 Point3dToFlattened3D(Vector3 point)
+        {
+            return new Vector3(point.x, 0, point.z);
+        }
     }
 }
 
