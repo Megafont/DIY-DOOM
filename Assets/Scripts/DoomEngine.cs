@@ -54,8 +54,7 @@ namespace DIY_DOOM
             bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + WAD_Path);
             bool loadedMapData = _WAD_Loader.LoadMapData(MapToLoad, out Map map);
 
-            //Texture2D tex = _WAD_Loader.Patch.RenderToTexture2D(map.GetPaletteDef(0));
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
+            DEBUG_DoTextureTest();
 
             AutoMapRenderer autoMapRenderer = FindObjectOfType<AutoMapRenderer>();
             autoMapRenderer.DrawMap(map, Color.white);
@@ -81,5 +80,28 @@ namespace DIY_DOOM
             Application.Quit();
         }
 
+        private void DEBUG_DoTextureTest()
+        {
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
+
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
+            TextureTest.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNSMAL1", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNPOIS", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNPOIS2", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("EXITDOOR", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
+            //TextureTest.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
+
+
+        }
     }
 }

@@ -1,13 +1,15 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 
 using UnityEngine;
-using UnityEngine.Analytics;
 
 using DIY_DOOM.Maps;
-using UnityEditor;
-
+using DIY_DOOM.WADs.Data;
+using DIY_DOOM.WADs.Data.Maps;
+using DIY_DOOM.WADs.Data.Textures;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace DIY_DOOM.WADs
 {
@@ -43,6 +45,12 @@ namespace DIY_DOOM.WADs
             return bytes8;
         }
 
+        public string Read8ByteString(byte[] wadData, int offset)
+        {
+            // The trim on the end is needed, as unused characters at the end of the lump name are all set to the null character. We need to remove those unnecessary chars from the end of the string.
+            return Encoding.UTF8.GetString(Read8Bytes(wadData, offset)).Trim('\0');
+        }
+
 
 
         // FUNCTIONS FOR READING WAD FILE STRUCTURE
@@ -59,15 +67,14 @@ namespace DIY_DOOM.WADs
             return header;
         }
 
-        public Directory ReadDirectoryData(byte[] wadData, int offset)
+        public WAD_DirectoryDef ReadDirectoryData(byte[] wadData, int offset)
         {
-            Directory directory = new Directory();
+            WAD_DirectoryDef directory = new WAD_DirectoryDef();
 
             directory.LumpOffset = BitConverter.ToUInt32(Read4Bytes(wadData, offset));
             directory.LumpSize = BitConverter.ToUInt32(Read4Bytes(wadData, offset + 4));
 
-            directory.LumpName = System.Text.Encoding.UTF8.GetString(Read8Bytes(wadData, offset + 8)).Trim();
-            directory.LumpName = directory.LumpName.Trim('\0'); // This is needed, as unused characters at the end of the lump name are all set to the null character. We need to remove those unnecessary chars from the end of the string.
+            directory.LumpName = Read8ByteString(wadData, offset + 8);
 
             return directory;
         }
@@ -178,7 +185,7 @@ namespace DIY_DOOM.WADs
             return seg;
         }
 
-        public PaletteDef ReadPaletteData(byte[] wadData, int offset)
+        public Palette ReadPaletteData(byte[] wadData, int offset)
         {
             Color32[] colors = new Color32[256];
 
@@ -191,14 +198,14 @@ namespace DIY_DOOM.WADs
             }
 
 
-            PaletteDef palette = new PaletteDef(colors);
+            Palette palette = new Palette(colors);
 
             return palette;
         }
 
-        public WAD_PatchHeader ReadPatchHeader(byte[] wadData, int offset) 
+        public PatchHeader ReadPatchHeader(byte[] wadData, int offset) 
         { 
-            WAD_PatchHeader patchHeader = new WAD_PatchHeader();
+            PatchHeader patchHeader = new PatchHeader();
 
             patchHeader.Width = BitConverter.ToUInt16(Read2Bytes(wadData, offset));
             patchHeader.Height = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 2));
@@ -223,9 +230,9 @@ namespace DIY_DOOM.WADs
             return patchHeader;
         }
 
-        public WAD_PatchColumn ReadPatchColumn(byte[] wadData, int offset, out int nextColumnOffset)
+        public PatchColumn ReadPatchColumn(byte[] wadData, int offset, out int nextColumnOffset)
         {
-            WAD_PatchColumn patchColumn = new WAD_PatchColumn();
+            PatchColumn patchColumn = new PatchColumn();
 
             patchColumn.TopDelta = wadData[offset++];
             if (patchColumn.TopDelta != 0xFF)
@@ -250,6 +257,75 @@ namespace DIY_DOOM.WADs
             nextColumnOffset = offset;
 
             return patchColumn;
+        }
+
+        public PatchNamesHeader ReadPatchNamesHeader(byte[] wadData, int offset)
+        {
+            PatchNamesHeader patchNamesHeader = new PatchNamesHeader();
+
+            patchNamesHeader.PatchNamesCount = BitConverter.ToUInt32(Read4Bytes(wadData, offset));
+            
+            patchNamesHeader.PatchNamesOffset = (uint) offset + 4;
+
+            return patchNamesHeader;
+        }
+
+        public TextureHeader ReadTextureHeader(byte[] wadData, int offset)
+        {
+            TextureHeader textureHeader = new TextureHeader();
+
+            textureHeader.TexturesCount = BitConverter.ToUInt32(Read4Bytes(wadData, offset));
+            textureHeader.TexturesOffset = BitConverter.ToUInt32(Read4Bytes(wadData, offset + 4));
+
+
+            offset += 4;
+            for (int i = 0; i < textureHeader.TexturesCount; i++)
+            {
+                textureHeader.AddTextureDataOffset(BitConverter.ToUInt32(Read4Bytes(wadData, offset)));
+                offset += 4;
+            }
+
+
+            return textureHeader;
+        }
+
+        public TextureData ReadTextureData(byte[] wadData, int offset)
+        {
+            TextureData textureData = new TextureData();
+
+            textureData.TextureName = Read8ByteString(wadData, offset);
+
+            textureData.Flags = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
+            textureData.Width = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 12));
+            textureData.Height = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 14));
+            
+            textureData.ColumnDirectory = BitConverter.ToUInt32(Read4Bytes(wadData, offset + 16));
+            
+            textureData.PatchCount = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 20));
+            
+            
+            offset += 22;
+            for (int i = 0; i < textureData.PatchCount; i++)
+            {
+                textureData.AddTexturePatch(ReadTexturePatch(wadData, offset));
+                offset += 10;
+            }
+
+
+            return textureData;
+        }
+
+        public TexturePatch ReadTexturePatch(byte[] wadData, int offset)
+        {
+            TexturePatch texturePatch = new TexturePatch();
+
+            texturePatch.X_Offset = BitConverter.ToInt16(Read2Bytes(wadData, offset));
+            texturePatch.Y_Offset = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
+            texturePatch.PatchNameIndex = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 4));
+            texturePatch.StepDir = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
+            texturePatch.ColorMap = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
+
+            return texturePatch;
         }
     }
 }

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+using DIY_DOOM.WADs.Data.Maps;
+
 
 namespace DIY_DOOM.Maps
 {
@@ -20,7 +22,6 @@ namespace DIY_DOOM.Maps
         private List<NodeDef> _NodeDefs;
         private List<SubSectorDef> _SubSectorDefs;
         private List<SegDef> _SegDefs;
-        private List<PaletteDef> _PaletteDefs;
 
         private Vector3 _MinExtents;
         private Vector3 _MaxExtents;
@@ -49,7 +50,6 @@ namespace DIY_DOOM.Maps
             _NodeDefs = new List<NodeDef>();
             _SubSectorDefs = new List<SubSectorDef>();
             _SegDefs = new List<SegDef>();
-            _PaletteDefs = new List<PaletteDef>();
 
             _MinExtents = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             _MaxExtents = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -119,11 +119,6 @@ namespace DIY_DOOM.Maps
             _SegDefs.Add(seg);
         }   
 
-        public void AddPaletteDef(PaletteDef palette)
-        {
-            _PaletteDefs.Add(palette);
-        }
-
         private void UpdateExtents(Vector3 vertex)
         {
             if (vertex.x < _MinExtents.x)
@@ -170,11 +165,6 @@ namespace DIY_DOOM.Maps
         public SegDef GetSegDef(uint index)
         {
             return _SegDefs[(int) index];
-        }
-
-        public PaletteDef GetPaletteDef(uint index)
-        {
-            return _PaletteDefs[(int) index];
         }
 
         /// <summary>
@@ -255,7 +245,6 @@ namespace DIY_DOOM.Maps
         public uint NodesCount { get { return (uint) _NodeDefs.Count; } }
         public uint SubSectorsCount { get { return (uint) _SubSectorDefs.Count; } }
         public uint SegsCount { get { return (uint) _SegDefs.Count; } }
-        public uint PalettesCount { get { return (uint) _PaletteDefs.Count; } }
 
         public int ActivePaletteIndex 
         { 

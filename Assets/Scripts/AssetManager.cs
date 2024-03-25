@@ -5,8 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using DIY_DOOM.WADs;
-using DIY_DOOM.Maps;
-using System.Xml.Linq;
+using DIY_DOOM.WADs.Data.Textures;
 
 
 namespace DIY_DOOM
@@ -18,8 +17,11 @@ namespace DIY_DOOM
 
         private WAD_Loader _WAD_Loader;
 
-        private List<PaletteDef> _Palettes;
-        private Dictionary<string, Patch> _RawTexturePatchDataLookup;
+        private List<Palette> _Palettes;
+        private List<string> _PatchNames;
+
+        private Dictionary<string, Patch> _RawPatchDataLookup;
+        private Dictionary<string, TextureData> _RawTextureDataLookup;
         private Dictionary<string, Texture2D> _TextureLookup;
 
 
@@ -46,8 +48,12 @@ namespace DIY_DOOM
             _WAD_Loader = wadLoader;
 
 
-            _Palettes = new List<PaletteDef>();
-            _RawTexturePatchDataLookup = new Dictionary<string, Patch>();
+            _Palettes = new List<Palette>();
+            _PatchNames = new List<string>();
+
+            _RawPatchDataLookup = new Dictionary<string, Patch>();
+            _RawTextureDataLookup = new Dictionary<string, TextureData>();
+
             _TextureLookup = new Dictionary<string, Texture2D>();
         }
 
@@ -59,11 +65,13 @@ namespace DIY_DOOM
         {
             _Palettes.Clear();
 
+            _RawPatchDataLookup.Clear();
+            _RawTextureDataLookup.Clear();
+
             _TextureLookup.Clear();
-            _RawTexturePatchDataLookup.Clear();
         }
 
-        public bool AddPalette(PaletteDef palette)
+        public bool AddPalette(Palette palette)
         {
             if (!_Palettes.Contains(palette))
             {
@@ -73,6 +81,50 @@ namespace DIY_DOOM
             else
             {
                 Debug.LogError($"AssetManager failed to add palette, as it has already been added.");
+                return false;
+            }
+        }
+
+        public bool AddPatchName(string patchName)
+        {
+            if (!_PatchNames.Contains(patchName))
+            {
+                _PatchNames.Add(patchName);
+
+                return true;
+            }
+            else
+            {
+                Debug.LogError($"AssetManager failed to add patch name \"{patchName}\", as it has already been added.");
+                return false;
+            }
+        }
+
+        public bool AddRawPatchData(string name, Patch patch)
+        {
+            try
+            {                
+                _RawPatchDataLookup.Add(name, patch);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"AssetManager failed to add raw patch data for patch \"{name}\" due to this error: \"{e.Message}\"");
+                return false;
+            }
+
+        }
+
+        public bool AddRawTextureData(string name, TextureData textureData)
+        {
+            try
+            {                
+                _RawTextureDataLookup.Add(name, textureData);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"AssetManager failed to add raw texture data for texture \"{name}\" due to this error: \"{e.Message}\"");
                 return false;
             }
         }
@@ -94,36 +146,67 @@ namespace DIY_DOOM
 
         public Texture2D GetTexture(string name, int paletteIndex)
         {
-            string patchLookupName = BuildPatchLookupName(name, paletteIndex);
+            string textureLookupName = BuildPatchLookupName(name, paletteIndex);
 
 
-            if (_TextureLookup.TryGetValue(patchLookupName, out Texture2D texture))
+            if (_TextureLookup.TryGetValue(textureLookupName, out Texture2D texture))
             {
                 return texture;
             }
             else
             {
-                if (_RawTexturePatchDataLookup.TryGetValue(name, out Patch patch))
+                // Check if there is a texture data entry with the specified name.
+                if (_RawTextureDataLookup.TryGetValue(name, out TextureData textureData))
                 {
-                    _TextureLookup.Add(patchLookupName, patch.RenderToTexture2D(_Palettes[paletteIndex]));
-
-                    return _TextureLookup[patchLookupName];
+                    texture = textureData.RenderToTexture2D(_Palettes[paletteIndex]);
+                    _TextureLookup.Add(textureLookupName, texture);
+                    return texture;
                 }
 
-                // The raw patch data for the request texture is not present in the lookup, so load it.
+                // Check if there is a patch in the raw patch lookup with the specified name. If so, generate the texture, add it to the textures list, and return.
+                else if (_RawPatchDataLookup.TryGetValue(name, out Patch patch))
+                {
+                    _TextureLookup.Add(textureLookupName, patch.RenderToTexture2D(_Palettes[paletteIndex]));
+
+                    return _TextureLookup[textureLookupName];
+                }
+
+                // No raw patch data was found with the specified name, so try to load one. If this works, add it to the raw patches lookup, generate the texture, add it to the textures list, and return.
                 else if (_WAD_Loader.ReadPatchData(name, out Patch loadedPatch))
                 {
-                    _RawTexturePatchDataLookup.Add(name, loadedPatch);
-                    _TextureLookup.Add(patchLookupName, 
+                    // NOTE: We don't add loadedPatch to _RawPatchDataLookup here, as the ReadPatchData() function already did that.
+
+                    _TextureLookup.Add(textureLookupName,
                                        loadedPatch.RenderToTexture2D(_Palettes[paletteIndex]));
 
-                    return _TextureLookup[patchLookupName];
+                    return _TextureLookup[textureLookupName];
                 }
+
             }
 
 
-            Debug.Log($"AssetManager failed to get texture \"{patchLookupName}\"!");
+            Debug.Log($"AssetManager failed to get texture \"{textureLookupName}\"!");
             return null;
+        }
+
+        public Palette GetPalette(int paletteIndex)
+        {
+            return _Palettes[paletteIndex];
+        }
+
+        public string GetPatchName(int index)
+        {
+            return _PatchNames[index];
+        }
+
+        public Patch GetRawPatchData(string name)
+        {
+            return _RawPatchDataLookup[name];
+        }
+
+        public TextureData GetRawTextureData(string name)
+        {
+            return _RawTextureDataLookup[name];
         }
 
         private string BuildPatchLookupName(string patchName, int paletteIndex)
@@ -140,6 +223,12 @@ namespace DIY_DOOM
 
             return patchNameWithIndex.Substring(0, lastUnderscoreIndex + 1);
         }
+
+
+
+        public int PaletteCount { get { return _Palettes.Count; } } 
+        public int PatchCount { get { return _TextureLookup.Values.Count; } }
+        public int PatchNamesCount { get { return _PatchNames.Count; } }
 
     } // end class AssetManager
 

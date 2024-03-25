@@ -5,9 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using DIY_DOOM.Maps;
-using Unity.VisualScripting;
-using UnityEngine.UI;
-using Unity.Properties;
+using DIY_DOOM.WADs.Data.Maps;
 
 
 namespace DIY_DOOM.AutoMap

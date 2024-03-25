@@ -1,11 +1,16 @@
-using DIY_DOOM.Maps;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.CompilerServices;
+
 using UnityEngine;
 
+using DIY_DOOM.Maps;
+using DIY_DOOM.WADs;
+using DIY_DOOM.WADs.Data;
+using DIY_DOOM.WADs.Data.Maps;
+using DIY_DOOM.WADs.Data.Textures;
+using JetBrains.Annotations;
 
 namespace DIY_DOOM.WADs
 {
@@ -13,14 +18,13 @@ namespace DIY_DOOM.WADs
     {
         private string _FilePath;
         private byte[] _WAD_Data; // Stores the loaded file contents.
-        private List<Directory> _WAD_Directories; // The directories inside the WAD file.
+        private List<WAD_DirectoryDef> _WAD_Directories; // The directories inside the WAD file.
 
         private WAD_Reader _Reader;
 
         private int _MapLumpIndex = -1;
 
         private AssetManager _AssetManager;
-
 
 
         public WAD_Loader()
@@ -62,15 +66,21 @@ namespace DIY_DOOM.WADs
             return true;
         }
 
+        private void Clear()
+        {
+            _WAD_Data = null;
+            _WAD_Directories = null;
+        }
+
         protected bool ReadDirectories()
         {
             WAD_Header header = _Reader.ReadHeaderData(_WAD_Data, 0);
 
             //header.DEBUG_Print();
 
-            _WAD_Directories = new List<Directory>();
+            _WAD_Directories = new List<WAD_DirectoryDef>();
 
-            Directory directory = new Directory();
+            WAD_DirectoryDef directory = new WAD_DirectoryDef();
             for (int i = 0; i < header.DirectoryCount; i++)
             {
                 directory = _Reader.ReadDirectoryData(_WAD_Data, (int) (header.DirectoryOffset + i * 16));
@@ -88,6 +98,10 @@ namespace DIY_DOOM.WADs
 
         public bool LoadMapData(string mapName, out Map map)
         {
+            if (_AssetManager == null)
+                _AssetManager = AssetManager.Instance;
+
+
             map = new Map(mapName);
 
 
@@ -127,11 +141,10 @@ namespace DIY_DOOM.WADs
                 return false;
             }
 
-            if (!ReadPaletteData(map))
-            {
-                DisplayLoadMapDataFailedError("palettes", map);
-                return false;
-            }
+
+            map.DoFinalProcessing();
+
+            ReadOtherData();
 
 
             // Unload the raw wad data, since we don't need it anymore.
@@ -139,16 +152,54 @@ namespace DIY_DOOM.WADs
             //UnloadRawWadData(); 
 
 
-            map.DoFinalProcessing();
-
             return true;
         }
 
+        private bool ReadOtherData()
+        {
+            if (!ReadPaletteData())
+            {
+                DisplayLoadDataFailedError("PLAYPAL");
+                return false;
+            }
+
+            if (!ReadPatchNames())
+            {
+                DisplayLoadDataFailedError("PNAMES");
+                return false;
+            }
+
+            if (!ReadPatchesData())
+            {
+                Debug.LogError($"Failed to load all patch data entries!");
+                return false;
+            }
+
+            if (!ReadTexturesData("TEXTURE1"))
+            {
+                DisplayLoadDataFailedError("TEXTURE1");
+                return false;
+            }
+
+            if (!ReadTexturesData("TEXTURE2"))
+            {
+                DisplayLoadDataFailedError("TEXTURE2");
+                return false;
+            }
+
+
+            return true;
+        }
 
         public void DisplayLoadMapDataFailedError(string type, Map map)
         {
             Debug.LogError($"Failed to load {type} data for the map ({map.Name})!");
             map = null;
+        }
+
+        public void DisplayLoadDataFailedError(string lumpName)
+        {
+            Debug.LogError($"Failed to load from lump \"{lumpName}\"!");
         }
 
         private void UnloadRawWadData()
@@ -205,7 +256,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load vertices! The map's lump index is invalid!");
+                Debug.LogError($"Failed to load vertices! The map's lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -213,7 +264,7 @@ namespace DIY_DOOM.WADs
 
             if (_WAD_Directories[mapIndex].LumpName.CompareTo("VERTEXES") != 0)
             {
-                Debug.LogError("Failed to load vertices! The map's vertices lump index is invalid!");
+                Debug.LogError($"Failed to load vertices! The map's vertices lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -243,7 +294,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load lineDefs! The map's lump index is invalid!");
+                Debug.LogError($"Failed to load lineDefs! The map's lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -251,7 +302,7 @@ namespace DIY_DOOM.WADs
 
             if (_WAD_Directories[mapIndex].LumpName.CompareTo("LINEDEFS") != 0)
             {
-                Debug.LogError("Failed to load linedefs! The map's linedefs lump index is invalid!");
+                Debug.LogError($"Failed to load linedefs! The map's linedefs lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -280,7 +331,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load things! The map's lump index is invalid!");
+                Debug.LogError($"Failed to load things! The map's lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -288,7 +339,7 @@ namespace DIY_DOOM.WADs
 
             if (_WAD_Directories[mapIndex].LumpName.CompareTo("THINGS") != 0)
             {
-                Debug.LogError("Failed to load things! The map's things lump index is invalid!");
+                Debug.LogError($"Failed to load things! The map's things lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -317,7 +368,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load nodes! The map's lump index is invalid!");
+                Debug.LogError($"Failed to load nodes! The map's lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -325,7 +376,7 @@ namespace DIY_DOOM.WADs
 
             if (_WAD_Directories[mapIndex].LumpName.CompareTo("NODES") != 0)
             {
-                Debug.LogError("Failed to load nodes! The map's nodes lump index is invalid!");
+                Debug.LogError($"Failed to load nodes! The map's nodes lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -354,7 +405,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load subSectors! The map's lump index is invalid!");
+                Debug.LogError($"Failed to load subSectors! The map's lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -362,7 +413,7 @@ namespace DIY_DOOM.WADs
 
             if (_WAD_Directories[mapIndex].LumpName.CompareTo("SSECTORS") != 0)
             {
-                Debug.LogError("Failed to load subSectors! The map's subSectors lump index is invalid!");
+                Debug.LogError($"Failed to load subSectors! The map's subSectors lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -391,7 +442,7 @@ namespace DIY_DOOM.WADs
             int mapIndex = FindMapIndex(map);
             if (mapIndex == -1)
             {
-                Debug.LogError("Failed to load segs! The map's lump index is invalid!");
+                Debug.LogError($"Failed to load segs! The map's lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -399,7 +450,7 @@ namespace DIY_DOOM.WADs
 
             if (_WAD_Directories[mapIndex].LumpName.CompareTo("SEGS") != 0)
             {
-                Debug.LogError("Failed to load segs! The map's segs lump index is invalid!");
+                Debug.LogError($"Failed to load segs! The map's segs lump index ({mapIndex}) is invalid!");
                 return false;
             }
 
@@ -423,7 +474,7 @@ namespace DIY_DOOM.WADs
             return true;
         }
 
-        bool ReadPaletteData(Map map)
+        bool ReadPaletteData()
         {
             if (_AssetManager == null)
                 _AssetManager = AssetManager.Instance;
@@ -432,7 +483,7 @@ namespace DIY_DOOM.WADs
             int palettesLumpIndex = FindLumpByName("PLAYPAL");
             if (_WAD_Directories[palettesLumpIndex].LumpName.CompareTo("PLAYPAL") != 0)
             {
-                Debug.LogError("Failed to load palettes! The palettes lump index is invalid!");
+                Debug.LogError($"Failed to load palettes! The palettes lump index ({palettesLumpIndex}) is invalid!");
                 return false;
             }
 
@@ -440,7 +491,7 @@ namespace DIY_DOOM.WADs
             int paletteSizeInBytes = 256 * 3;
             int palettesCount = (int) (_WAD_Directories[palettesLumpIndex].LumpSize / paletteSizeInBytes);
 
-            PaletteDef palette;
+            Palette palette;
             for (int i = 0; i < palettesCount; i++)
             {
                 palette = _Reader.ReadPaletteData(_WAD_Data, (int) (_WAD_Directories[palettesLumpIndex].LumpOffset + i * paletteSizeInBytes));
@@ -456,58 +507,121 @@ namespace DIY_DOOM.WADs
             return true;
         }
 
+        public bool ReadPatchNames()
+        {
+            int patchNamesLumpIndex = FindLumpByName("PNAMES");
+            if (_WAD_Directories[patchNamesLumpIndex].LumpName.CompareTo("PNAMES") != 0)
+            {
+                Debug.LogError($"Failed to load patch names! The patch names lump index ({patchNamesLumpIndex}) is invalid!");
+                return false;
+            }
+
+
+
+            PatchNamesHeader patchNamesHeader = _Reader.ReadPatchNamesHeader(_WAD_Data, (int)_WAD_Directories[patchNamesLumpIndex].LumpOffset);
+            string name = "";
+            for (int i = 0; i < patchNamesHeader.PatchNamesCount; i++)
+            {
+                name = _Reader.Read8ByteString(_WAD_Data, (int)patchNamesHeader.PatchNamesOffset);
+                _AssetManager.AddPatchName(name.ToUpper()); // The ToUpper() here is needed as one of the patches has its name entered wrong in the names list in DOOM.WAD, starting with a lower case letter.
+                patchNamesHeader.PatchNamesOffset += 8;
+            }
+
+            Debug.Log($"Loaded {patchNamesHeader.PatchNamesCount} patch names from lump \"PNAMES\".");
+
+            return true;
+        }
+
         /// <summary>
-        /// Loads a texture.
+        /// This function reads in data for all patches.
+        /// </summary>
+        /// <returns>True if successful or false otherwise.</returns>
+        public bool ReadPatchesData()
+        {
+            for (int i = 0; i < _AssetManager.PatchNamesCount; i++) 
+            {
+                if (!ReadPatchData(_AssetManager.GetPatchName(i), out Patch patch))
+                    return false;
+            }
+
+            Debug.Log($"Loaded {_AssetManager.PatchNamesCount} patch data entries.");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Loads a single patch.
         /// </summary>
         /// <param name="map">The map we're loading.</param>
         /// <returns>True if sueccessfull or false otherwise.</returns>
         public bool ReadPatchData(string patchName, out Patch patch)
         {
             // This just sets the variable in case we fail to read in the specified patch and thus return earl
-            patch = new Patch("DUMMY", new WAD_PatchHeader());
+            patch = new Patch("DUMMY", new PatchHeader());
 
 
             int patchLumpIndex = FindLumpByName(patchName);
             if (_WAD_Directories[patchLumpIndex].LumpName.CompareTo(patchName) != 0)
             {
-                Debug.LogError("Failed to load patch! The patch's lump index is invalid!");
+                Debug.LogError($"Failed to load patch! The patch's lump index ({patchLumpIndex}) is invalid!");
                 return false;
             }
 
 
-            WAD_PatchHeader patchHeader =_Reader.ReadPatchHeader(_WAD_Data, (int) _WAD_Directories[patchLumpIndex].LumpOffset);
+            PatchHeader patchHeader =_Reader.ReadPatchHeader(_WAD_Data, (int) _WAD_Directories[patchLumpIndex].LumpOffset);
 
 
             patch = new Patch(patchName, patchHeader);
 
-            WAD_PatchColumn patchColumn = new WAD_PatchColumn();
+            PatchColumn patchColumn = new PatchColumn();
             for (int i = 0; i < patchHeader.Width; i++)
             {
                 int offset = (int) (_WAD_Directories[patchLumpIndex].LumpOffset + patchHeader.GetColumnOffset(i));
+                
+                patch.AppendColumnStartIndex();
 
-                while (patchColumn.TopDelta != 0xFF)
+                while (true)
                 {
                     patchColumn = _Reader.ReadPatchColumn(_WAD_Data, offset, out int nextColumnOffset);
                     offset = nextColumnOffset;
                     patch.AddPatchColumn(patchColumn);
+
+                    if (patchColumn.TopDelta == 0xFF)
+                        break;
                 }
 
-                // Reset this so the while loop can run again.
-                patchColumn.TopDelta = 0;
             }
             
 
-            Debug.Log($"Loaded patch \"{patchName}\".");
+            _AssetManager.AddRawPatchData(patchName, patch);
+
+
+            //Debug.Log($"Loaded patch \"{patchName}\".");
 
             return true;
         }
 
-        private void Clear()
+        public bool ReadTexturesData(string texturesLumpName)
         {
-            _WAD_Data = null;
-            _WAD_Directories = null;
+            int textureLumpIndex = FindLumpByName(texturesLumpName);
+            if (_WAD_Directories[textureLumpIndex].LumpName.CompareTo(texturesLumpName) != 0)
+            {
+                Debug.LogError($"Failed to load texture data for texture \"{texturesLumpName}\"! The texture's data lump index ({textureLumpIndex}) is invalid!");
+                return false;
+            }
+
+
+            TextureHeader textureHeader = _Reader.ReadTextureHeader(_WAD_Data, (int) _WAD_Directories[textureLumpIndex].LumpOffset);
+
+            for (int i = 0; i <textureHeader.TexturesCount; i++)
+            {
+                TextureData textureData = _Reader.ReadTextureData(_WAD_Data, (int) _WAD_Directories[textureLumpIndex].LumpOffset + (int) textureHeader.GetTextureDataOffset(i));
+                _AssetManager.AddRawTextureData(textureData.TextureName,textureData);
+            }
+
+            Debug.Log($"Loaded {textureHeader.TexturesCount} texture data entries from lump \"{texturesLumpName}\".");
+
+            return true;
         }
-
-
     }
 }

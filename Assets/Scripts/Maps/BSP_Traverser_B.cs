@@ -6,6 +6,7 @@ using UnityEngine;
 
 using DIY_DOOM.Maps;
 using DIY_DOOM.AutoMap;
+using DIY_DOOM.WADs.Data.Maps;
 
 using Random = UnityEngine.Random;
 
