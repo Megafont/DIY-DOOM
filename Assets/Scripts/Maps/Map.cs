@@ -20,8 +20,10 @@ namespace DIY_DOOM.Maps
         private List<LineDef> _LineDefs;
         private List<ThingDef> _ThingsDefs;
         private List<NodeDef> _NodeDefs;
+        private List<SectorDef> _SectorDefs;
         private List<SubSectorDef> _SubSectorDefs;
         private List<SegDef> _SegDefs;
+        private List<SideDef> _SideDefs;
 
         private Vector3 _MinExtents;
         private Vector3 _MaxExtents;
@@ -48,8 +50,10 @@ namespace DIY_DOOM.Maps
             _LineDefs = new List<LineDef>();
             _ThingsDefs = new List<ThingDef>();
             _NodeDefs = new List<NodeDef>();
+            _SectorDefs = new List<SectorDef>();
             _SubSectorDefs = new List<SubSectorDef>();
             _SegDefs = new List<SegDef>();
+            _SideDefs = new List<SideDef>();
 
             _MinExtents = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
             _MaxExtents = new Vector3(float.MinValue, float.MinValue, float.MinValue);
@@ -109,6 +113,11 @@ namespace DIY_DOOM.Maps
             _NodeDefs.Add(node);
         }
 
+        public void AddSectorDef(SectorDef sector)
+        {
+            _SectorDefs.Add(sector);
+        }
+
         public void AddSubSectorDef(SubSectorDef subSector)
         {
             _SubSectorDefs.Add(subSector);
@@ -118,6 +127,11 @@ namespace DIY_DOOM.Maps
         {
             _SegDefs.Add(seg);
         }   
+
+        public void AddSideDef(SideDef sideDef)
+        {
+            _SideDefs.Add(sideDef);
+        }
 
         private void UpdateExtents(Vector3 vertex)
         {
@@ -157,6 +171,11 @@ namespace DIY_DOOM.Maps
             return _NodeDefs[(int) index];
         }
 
+        public SectorDef GetSectorDef(uint index)
+        {
+            return _SectorDefs[(int) index];
+        }
+
         public SubSectorDef GetSubSectorDef(uint index)
         {
             return _SubSectorDefs[(int) index];
@@ -165,6 +184,11 @@ namespace DIY_DOOM.Maps
         public SegDef GetSegDef(uint index)
         {
             return _SegDefs[(int) index];
+        }
+
+        public SideDef GetSideDef(uint index)
+        {
+            return _SideDefs[(int) index];
         }
 
         /// <summary>
@@ -243,8 +267,10 @@ namespace DIY_DOOM.Maps
         public uint LineDefsCount { get { return (uint) _LineDefs.Count; } }
         public uint ThingsCount { get { return (uint) _ThingsDefs.Count; } }
         public uint NodesCount { get { return (uint) _NodeDefs.Count; } }
+        public uint SectorsCount { get { return (uint) _SectorDefs.Count; } }
         public uint SubSectorsCount { get { return (uint) _SubSectorDefs.Count; } }
         public uint SegsCount { get { return (uint) _SegDefs.Count; } }
+        public uint SidesCount { get { return (uint) _SideDefs.Count; } }
 
         public int ActivePaletteIndex 
         { 

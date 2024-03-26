@@ -159,6 +159,23 @@ namespace DIY_DOOM.WADs
             return node;
         }
 
+        public SectorDef ReadSectorData(byte[] wadData, int offset)
+        {
+            SectorDef sector = new SectorDef();
+
+            sector.FloorHeight = BitConverter.ToInt16(Read2Bytes(wadData, offset));
+            sector.CeilingHeight = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
+            
+            sector.FloorTexture = Read8ByteString(wadData, offset + 4);
+            sector.CeilingTexture = Read8ByteString(wadData, offset + 12);
+
+            sector.LightLevel = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 20));
+            sector.Type = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 22));
+            sector.Tag = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 24));
+
+            return sector;
+        }
+
         public SubSectorDef ReadSubSectorData(byte[] wadData, int offset)
         {
             SubSectorDef subSector = new SubSectorDef();
@@ -183,6 +200,22 @@ namespace DIY_DOOM.WADs
             seg.Offset = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 10));
 
             return seg;
+        }
+
+        public SideDef ReadSideDefData(byte[] wadData, int offset)
+        {
+            SideDef sideDef = new SideDef();
+
+            sideDef.X_Offset = BitConverter.ToInt16(Read2Bytes(wadData, offset));
+            sideDef.Y_Offset = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
+
+            sideDef.UpperTextureName = Read8ByteString(wadData, offset + 4);
+            sideDef.LowerTextureName = Read8ByteString(wadData, offset + 12);
+            sideDef.MiddleTextureName = Read8ByteString(wadData, offset + 20);
+
+            sideDef.SectorIndex = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 28));
+
+            return sideDef;
         }
 
         public Palette ReadPaletteData(byte[] wadData, int offset)

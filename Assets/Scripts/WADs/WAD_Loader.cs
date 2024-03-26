@@ -129,6 +129,12 @@ namespace DIY_DOOM.WADs
                 return false;
             }
 
+            if (!ReadMapSectors(map))
+            {
+                DisplayLoadMapDataFailedError("sectors", map);
+                return false;
+            }
+
             if (!ReadMapSubSectors(map))
             {
                 DisplayLoadMapDataFailedError("subSectors", map);
@@ -138,6 +144,12 @@ namespace DIY_DOOM.WADs
             if (!ReadMapSegs(map))
             {
                 DisplayLoadMapDataFailedError("segs", map);
+                return false;
+            }
+
+            if (!ReadMapSideDefs(map))
+            {
+                DisplayLoadMapDataFailedError("sideDefs", map);
                 return false;
             }
 
@@ -400,6 +412,43 @@ namespace DIY_DOOM.WADs
             return true;
         }
 
+        bool ReadMapSectors(Map map)
+        {
+            int mapIndex = FindMapIndex(map);
+            if (mapIndex == -1)
+            {
+                Debug.LogError($"Failed to load sectors! The map's lump index ({mapIndex}) is invalid!");
+                return false;
+            }
+
+            mapIndex += (int)MapLumpIndices.Sectors;
+
+            if (_WAD_Directories[mapIndex].LumpName.CompareTo("SECTORS") != 0)
+            {
+                Debug.LogError($"Failed to load sectors! The map's sectors lump index ({mapIndex}) is invalid!");
+                return false;
+            }
+
+
+            int sectorSizeInBytes = 26;
+            int sectorsCount = (int)(_WAD_Directories[mapIndex].LumpSize / sectorSizeInBytes);
+
+            SectorDef sector;
+            for (int i = 0; i < sectorsCount; i++)
+            {
+                sector = _Reader.ReadSectorData(_WAD_Data, (int)(_WAD_Directories[mapIndex].LumpOffset + i * sectorSizeInBytes));
+
+                map.AddSectorDef(sector);
+
+                //sector.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {sectorsCount} sectors for {map.Name}.");
+
+            return true;
+        }
+
         bool ReadMapSubSectors(Map map)
         {
             int mapIndex = FindMapIndex(map);
@@ -470,6 +519,43 @@ namespace DIY_DOOM.WADs
 
 
             Debug.Log($"Loaded {segsCount} segs for {map.Name}.");
+
+            return true;
+        }
+
+        bool ReadMapSideDefs(Map map)
+        {
+            int mapIndex = FindMapIndex(map);
+            if (mapIndex == -1)
+            {
+                Debug.LogError($"Failed to load sideDefs! The map's lump index ({mapIndex}) is invalid!");
+                return false;
+            }
+
+            mapIndex += (int)MapLumpIndices.SideDefs;
+
+            if (_WAD_Directories[mapIndex].LumpName.CompareTo("SIDEDEFS") != 0)
+            {
+                Debug.LogError($"Failed to load sideDefs! The map's sideDefs lump index ({mapIndex}) is invalid!");
+                return false;
+            }
+
+
+            int sideDefSizeInBytes = 30;
+            int sideDefsCount = (int)(_WAD_Directories[mapIndex].LumpSize / sideDefSizeInBytes);
+
+            SideDef sideDef;
+            for (int i = 0; i < sideDefsCount; i++)
+            {
+                sideDef = _Reader.ReadSideDefData(_WAD_Data, (int)(_WAD_Directories[mapIndex].LumpOffset + i * sideDefSizeInBytes));
+
+                map.AddSideDef(sideDef);
+
+                sideDef.DEBUG_Print();
+            }
+
+
+            Debug.Log($"Loaded {sideDefsCount} sideDefs for {map.Name}.");
 
             return true;
         }

@@ -54,7 +54,7 @@ namespace DIY_DOOM
             bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + WAD_Path);
             bool loadedMapData = _WAD_Loader.LoadMapData(MapToLoad, out Map map);
 
-            DEBUG_DoTextureTest();
+            //DEBUG_DoTextureTest();
 
             AutoMapRenderer autoMapRenderer = FindObjectOfType<AutoMapRenderer>();
             autoMapRenderer.DrawMap(map, Color.white);
