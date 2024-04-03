@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -5,6 +6,7 @@ using UnityEngine;
 
 using DIY_DOOM.AutoMap;
 using DIY_DOOM.Maps;
+using DIY_DOOM.MeshGeneration;
 using DIY_DOOM.WADs;
 
 
@@ -12,15 +14,24 @@ namespace DIY_DOOM
 {
     public class DoomEngine : MonoBehaviour
     {
-        public MeshRenderer TextureTest;
 
-        [Tooltip("This is a relative path to the WAD to load. It is relative to Application.persistantDataPath.")]
-        [SerializeField]
-        private string WAD_Path = "WADS/DOOM.wad";
+        [Tooltip("A DoomEngineSettings object that contains configuration settings to be used by the engine.")]
+        [SerializeField] private DoomEngineSettings _Settings;
 
-        [Tooltip("The name of the map to load.")]
-        [SerializeField]
-        private string MapToLoad = "E1M1";
+        [Space(10)]
+
+
+        [Header("Mesh Generation")]
+
+        [Tooltip("This is the GameObject that will hold the 3D geometry of the map. It must have a MeshFilter and a MeshRender component on it!")]
+        [SerializeField] private LevelGeometry _LevelGeometryObject;
+
+        [Space(10)]
+
+
+        [Header("Testing")]
+
+        [SerializeField] private MeshRenderer _TextureTestObject;
 
 
         private AssetManager _AssetManager;
@@ -33,6 +44,17 @@ namespace DIY_DOOM
 
         private void Awake()
         {
+            if (_LevelGeometryObject == null)
+                throw new Exception("The LevelGeometryObject is not set in the inspector!");
+            if (_TextureTestObject == null)
+                throw new Exception("The TextureTestObject is not set in the inspector!");
+
+
+            Settings = _Settings;
+
+            Settings.LevelGeometryObject = _LevelGeometryObject;
+            Settings.TextureTestObject = _TextureTestObject;
+
             _WAD_Loader = new WAD_Loader();
             _AssetManager = new AssetManager(_WAD_Loader);
         }
@@ -51,11 +73,20 @@ namespace DIY_DOOM
 
         protected virtual bool Init()
         {
-            bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + WAD_Path);
-            bool loadedMapData = _WAD_Loader.LoadMapData(MapToLoad, out Map map);
+            bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + _Settings.WAD_Path);
+            bool loadedMapData = _WAD_Loader.LoadMapData(_Settings.MapToLoad, out Map map);
 
-            //DEBUG_DoTextureTest();
+            InitAutoMap(map);
 
+            DEBUG_DoTextureTest();
+
+            _Settings.LevelGeometryObject.SetMap(map);
+
+            return loadedWAD && loadedMapData;
+        }
+
+        private void InitAutoMap(Map map)
+        {
             AutoMapRenderer autoMapRenderer = FindObjectOfType<AutoMapRenderer>();
             autoMapRenderer.DrawMap(map, Color.white);
 
@@ -65,8 +96,6 @@ namespace DIY_DOOM
 
             traverser.SetMap(map);
             traverser.RenderBspNodes();
-
-            return loadedWAD && loadedMapData;
         }
 
         protected virtual bool IsOver()
@@ -82,26 +111,30 @@ namespace DIY_DOOM
 
         private void DEBUG_DoTextureTest()
         {
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
 
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
-            TextureTest.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNSMAL1", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNPOIS", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("BRNPOIS2", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("EXITDOOR", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
-            //TextureTest.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
+            _Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNSMAL1", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNPOIS", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNPOIS2", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("EXITDOOR", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
 
 
         }
+
+
+
+        public static DoomEngineSettings Settings { get; private set; }
     }
 }

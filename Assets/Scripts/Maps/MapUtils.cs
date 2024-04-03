@@ -22,14 +22,19 @@ namespace DIY_DOOM.Maps
             return point;
         }
 
-        public static Vector3 Point2dTo3dXZ(Vector2 point2D, float yOffset = 0f)
+        public static float ScaleSingleValue(float value, float scaleFactor)
         {
-            return new Vector3(point2D.x, yOffset, point2D.y);
+            return value / scaleFactor;
         }
 
-        public static Vector3 Point2dTo3dXZ(float x, float y, float yOffset = 0f)
+        public static Vector3 Point2dTo3dXZ(Vector2 point2D, float verticalPosition = 0f)
         {
-            return new Vector3(x, yOffset, y);
+            return new Vector3(point2D.x, verticalPosition, point2D.y);
+        }
+
+        public static Vector3 Point2dTo3dXZ(float x, float y, float verticalPosition = 0f)
+        {
+            return new Vector3(x, verticalPosition, y);
         }
 
         /// <summary>

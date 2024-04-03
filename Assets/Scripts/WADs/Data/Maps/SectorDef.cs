@@ -5,8 +5,8 @@ namespace DIY_DOOM.WADs.Data.Maps
 {
     public struct SectorDef
     {
-        public int FloorHeight;
-        public int CeilingHeight;
+        public float FloorHeight;
+        public float CeilingHeight;
 
         public string FloorTexture;
         public string CeilingTexture;

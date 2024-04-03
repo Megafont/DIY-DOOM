@@ -60,12 +60,7 @@ namespace DIY_DOOM.WADs.Data.Textures
 
         public Texture2D RenderToTexture2D(Palette palette)
         {
-            Texture2D texture = new Texture2D((int)_Width, (int)_Height, TextureFormat.RGBA32, true);
-            texture.name = _Name;
-            texture.alphaIsTransparency = true;
-            texture.filterMode = FilterMode.Point;
-            texture.wrapMode = TextureWrapMode.Repeat;
-            texture.SetAllPixelsToColor(Color.clear);
+            Texture2D texture = TextureUtils.CreateBlankDoomTexture(_Name, (int) _Width, (int) _Height);
 
 
             int x = 0;

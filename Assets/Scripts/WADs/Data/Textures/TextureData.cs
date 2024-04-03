@@ -1,8 +1,9 @@
-using DIY_DOOM.Utils.Textures;
 using System.Collections;
 using System.Collections.Generic;
 
 using UnityEngine;
+
+using DIY_DOOM.Utils.Textures;
 
 
 namespace DIY_DOOM.WADs.Data.Textures
@@ -122,13 +123,7 @@ namespace DIY_DOOM.WADs.Data.Textures
         {
             AssetManager assetManager = AssetManager.Instance;
 
-
-            Texture2D texture = new Texture2D((int) Width, (int) Height, TextureFormat.RGBA32, true);
-            texture.name = TextureName;
-            texture.alphaIsTransparency = true;
-            texture.filterMode = FilterMode.Point;
-            texture.wrapMode = TextureWrapMode.Repeat;
-            texture.SetAllPixelsToColor(Color.clear);
+            Texture2D texture = TextureUtils.CreateBlankDoomTexture(TextureName, (int) Width, (int) Height);
 
 
             for (int i = 0; i < _TexturePatches.Count; i++)

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2128900f627c5041b4187ef4712427b, type: 3}
+  m_Name: DefaultDoomEngineSettings
+  m_EditorClassIdentifier: 
+  WAD_Path: WADS/DOOM.wad
+  MapToLoad: E1M1
+  LevelMeshPrefab: {fileID: 5170632311363796044, guid: b0897022c2029934d862d956e1d4053a, type: 3}
+  DOOM_MaterialPrefab: {fileID: 2100000, guid: 161ada58f2e64fe41b23cbffa000a235, type: 2}
+  DOOM_MissingTextureMaterial: {fileID: 2100000, guid: 063016fa25dd6094e8a565d3152f2a08, type: 2}
+  TextureAlphaIsTransparency: 1
+  TextureFilterMode: 0
+  TextureWrapMode: 0
+  NewTextureFillColor:
+    serializedVersion: 2
+    rgba: 0
+  LevelGeometryObject: {fileID: 0}
+  TextureTestObject: {fileID: 0}

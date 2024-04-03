@@ -551,7 +551,7 @@ namespace DIY_DOOM.WADs
 
                 map.AddSideDef(sideDef);
 
-                sideDef.DEBUG_Print();
+                //sideDef.DEBUG_Print();
             }
 
 
@@ -647,6 +647,8 @@ namespace DIY_DOOM.WADs
 
 
             int patchLumpIndex = FindLumpByName(patchName);
+            if (patchLumpIndex < 0 || patchLumpIndex > _WAD_Directories.Count)
+                return false;
             if (_WAD_Directories[patchLumpIndex].LumpName.CompareTo(patchName) != 0)
             {
                 Debug.LogError($"Failed to load patch! The patch's lump index ({patchLumpIndex}) is invalid!");

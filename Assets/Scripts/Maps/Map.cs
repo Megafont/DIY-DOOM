@@ -32,7 +32,11 @@ namespace DIY_DOOM.Maps
 
         private ThingDef[] _PlayerSpawns;
 
-        private float _AutoMapScaleFactor;
+        // This controls the size of the map. Note that the scaling uses division rather than multiplication.
+        // The default value is 32, which makes the map 32x smaller than it would be if we pretend one DOOM unit is equal to one Unity unit.
+        // NOTE: In DOOM, one grid cell is 64 units. The grid lines mark every 16 grid cells (1024 DOOM units).
+        //       Lastly, a pixel is 16 DOOM units, so four of them is 64 units (one grid cell).
+        private float _ScaleFactor; 
 
         private int _ActivePaletteIndex = 0;
         
@@ -60,14 +64,14 @@ namespace DIY_DOOM.Maps
 
             // This constant comes from DOOM wiki: https://doom.fandom.com/wiki/Map_unit
             // The guy that made the repo linked in the readme file in the root folder of this project using 15f.   
-            _AutoMapScaleFactor = 32f; // 15f;
+            _ScaleFactor = 32f; // 15f;
         }
 
         public void AddVertexDef(Vector3 vertex)
         {
             if (_ScaleAndAjustVertices)
             {
-                vertex = MapUtils.ScaleAndAdjustRawDoomPoint(vertex, _AutoMapScaleFactor);
+                vertex = MapUtils.ScaleAndAdjustRawDoomPoint(vertex, _ScaleFactor);
             }
 
 
@@ -85,7 +89,7 @@ namespace DIY_DOOM.Maps
         {
             if (_ScaleAndAjustVertices)
             {
-                thing.Position = MapUtils.ScaleAndAdjustRawDoomPoint(thing.Position, _AutoMapScaleFactor);
+                thing.Position = MapUtils.ScaleAndAdjustRawDoomPoint(thing.Position, _ScaleFactor);
             }
 
             if (thing.Type >= 1 && thing.Type <= 4)
@@ -101,12 +105,12 @@ namespace DIY_DOOM.Maps
         {
             if (_ScaleAndAjustVertices)
             {
-                node.PartitionStart = MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionStart, _AutoMapScaleFactor);
-                node.DeltaToPartitionEnd = MapUtils.ScaleAndAdjustRawDoomPoint(node.DeltaToPartitionEnd, _AutoMapScaleFactor);
-                node.RightBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_BottomLeft, _AutoMapScaleFactor);
-                node.RightBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_TopRight, _AutoMapScaleFactor);
-                node.LeftBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_BottomLeft, _AutoMapScaleFactor);
-                node.LeftBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_TopRight, _AutoMapScaleFactor);
+                node.PartitionStart = MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionStart, _ScaleFactor);
+                node.DeltaToPartitionEnd = MapUtils.ScaleAndAdjustRawDoomPoint(node.DeltaToPartitionEnd, _ScaleFactor);
+                node.RightBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_BottomLeft, _ScaleFactor);
+                node.RightBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_TopRight, _ScaleFactor);
+                node.LeftBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_BottomLeft, _ScaleFactor);
+                node.LeftBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_TopRight, _ScaleFactor);
             }
 
 
@@ -115,6 +119,9 @@ namespace DIY_DOOM.Maps
 
         public void AddSectorDef(SectorDef sector)
         {
+            sector.FloorHeight = MapUtils.ScaleSingleValue(sector.FloorHeight, _ScaleFactor);
+            sector.CeilingHeight = MapUtils.ScaleSingleValue(sector.CeilingHeight, _ScaleFactor);
+
             _SectorDefs.Add(sector);
         }
 
@@ -270,7 +277,7 @@ namespace DIY_DOOM.Maps
         public uint SectorsCount { get { return (uint) _SectorDefs.Count; } }
         public uint SubSectorsCount { get { return (uint) _SubSectorDefs.Count; } }
         public uint SegsCount { get { return (uint) _SegDefs.Count; } }
-        public uint SidesCount { get { return (uint) _SideDefs.Count; } }
+        public uint SideDefsCount { get { return (uint) _SideDefs.Count; } }
 
         public int ActivePaletteIndex 
         { 
@@ -278,7 +285,7 @@ namespace DIY_DOOM.Maps
             set { _ActivePaletteIndex = value; }
         }
 
-        public float AutoMapScaleFactor { get { return _AutoMapScaleFactor; } }
+        public float ScaleFactor { get { return _ScaleFactor; } }
         public Vector3 MapDimensions { get { return _MapSize; } }
         public Vector3 MinExtents { get { return _MinExtents; } }
         public Vector3 MaxExtents { get { return _MaxExtents; } }
