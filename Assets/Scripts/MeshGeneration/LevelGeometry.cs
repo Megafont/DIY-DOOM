@@ -35,8 +35,9 @@ namespace DIY_DOOM.MeshGeneration
 
             for (int i = 0; i < meshGenOutput.MapSubMeshes.Count; i++)
             {
+                
                 LevelSubMesh subMesh = Instantiate(prefab, transform);
-
+                subMesh.gameObject.name = $"LevelMesh - {meshGenOutput.MapSubMeshMaterials[i].name}";
                 subMesh.MeshFilter.mesh = meshGenOutput.MapSubMeshes[i];
                 subMesh.MeshRenderer.material = meshGenOutput.MapSubMeshMaterials[i];
             }

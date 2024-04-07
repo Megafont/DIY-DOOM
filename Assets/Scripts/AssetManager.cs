@@ -144,9 +144,9 @@ namespace DIY_DOOM
 
         }
 
-        public Texture2D GetTexture(string name, int paletteIndex)
+        public Texture2D GetTexture(string textureName, int paletteIndex)
         {
-            string textureLookupName = BuildPatchLookupName(name, paletteIndex);
+            string textureLookupName = BuildPatchLookupName(textureName, paletteIndex);
 
 
             if (_TextureLookup.TryGetValue(textureLookupName, out Texture2D texture))
@@ -156,7 +156,7 @@ namespace DIY_DOOM
             else
             {
                 // Check if there is a texture data entry with the specified name.
-                if (_RawTextureDataLookup.TryGetValue(name, out TextureData textureData))
+                if (_RawTextureDataLookup.TryGetValue(textureName, out TextureData textureData))
                 {
                     texture = textureData.RenderToTexture2D(_Palettes[paletteIndex]);
                     _TextureLookup.Add(textureLookupName, texture);
@@ -164,7 +164,7 @@ namespace DIY_DOOM
                 }
 
                 // Check if there is a patch in the raw patch lookup with the specified name. If so, generate the texture, add it to the textures list, and return.
-                else if (_RawPatchDataLookup.TryGetValue(name, out Patch patch))
+                else if (_RawPatchDataLookup.TryGetValue(textureName, out Patch patch))
                 {
                     _TextureLookup.Add(textureLookupName, patch.RenderToTexture2D(_Palettes[paletteIndex]));
 
@@ -172,7 +172,7 @@ namespace DIY_DOOM
                 }
 
                 // No raw patch data was found with the specified name, so try to load one. If this works, add it to the raw patches lookup, generate the texture, add it to the textures list, and return.
-                else if (_WAD_Loader.ReadPatchData(name, out Patch loadedPatch))
+                else if (_WAD_Loader.ReadPatchData(textureName, out Patch loadedPatch))
                 {
                     // NOTE: We don't add loadedPatch to _RawPatchDataLookup here, as the ReadPatchData() function already did that.
 

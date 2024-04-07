@@ -11,8 +11,8 @@ namespace DIY_DOOM.WADs.Data.Textures
     {
         public byte TopDelta;
         public byte Length;
-        public byte PaddingPre;
-        public byte PaddingPost;
+        public byte PaddingPre; // Unused according to DoomWiki.org
+        public byte PaddingPost; // Unused according to DoomWiki.org
 
 
         private byte[] _ColumnData;

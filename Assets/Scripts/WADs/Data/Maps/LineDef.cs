@@ -7,15 +7,15 @@ namespace DIY_DOOM.WADs.Data.Maps
     [Flags]
     public enum LineDefFlags
     {
-        BlocksPlayersAndMonsters = 0,
-        BlocksMonsters = 1,
-        TwoSided = 2,
-        UpperTextureIsUnpegged = 4,
-        LowerTextureIsUnpegged = 8,
-        Secret = 16,
-        BlocksSound = 32,
-        NeverShowsOnAutoMap = 64,
-        AlwaysShowsOnAutoMap = 128
+        BlocksPlayersAndMonsters = 1,
+        BlocksMonsters = 2,
+        TwoSided = 4,
+        UpperTextureIsUnpegged = 8,
+        LowerTextureIsUnpegged = 16,
+        Secret = 32,
+        BlocksSound = 64,
+        NeverShowsOnAutoMap = 128,
+        AlwaysShowsOnAutoMap = 256,
     }
 
     public struct LineDef
@@ -26,8 +26,8 @@ namespace DIY_DOOM.WADs.Data.Maps
         public uint LineType;
         public uint SectorTag;
 
-        public int LeftSideDef;
-        public int RightSideDef;
+        public int LeftSideDefIndex;
+        public int RightSideDefIndex;
 
 
         public void DEBUG_Print()
@@ -39,8 +39,8 @@ namespace DIY_DOOM.WADs.Data.Maps
             Debug.Log($"Flags: {Flags}");
             Debug.Log($"Line Type: {LineType}");
             Debug.Log($"Sector Tag: {SectorTag}");
-            Debug.Log($"Right Side Def: {RightSideDef}");
-            Debug.Log($"Left Side Def: {LeftSideDef}");
+            Debug.Log($"Right Side Def: {RightSideDefIndex}");
+            Debug.Log($"Left Side Def: {LeftSideDefIndex}");
             Debug.Log(new string('-', 256));
         }
     }

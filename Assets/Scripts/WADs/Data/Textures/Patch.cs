@@ -76,7 +76,7 @@ namespace DIY_DOOM.WADs.Data.Textures
 
                 for (int y = 0; y < patchColumn.Length; y++)
                 {
-                    texture.SetPixel((int) _Width - 1 - x, y + patchColumn.TopDelta, palette[patchColumn[y]]);
+                    texture.SetPixel((int) x, (int) _Height - (y + patchColumn.TopDelta), palette[patchColumn[y]]);
                 }
 
             }
@@ -87,35 +87,36 @@ namespace DIY_DOOM.WADs.Data.Textures
             return texture;
         }
 
-        public void ComposeColumn(Texture2D texture, int height, ref int patchColumnIndex, int columnOffsetIndex, int yOrigin, Palette palette)
+        public void ComposeColumn(Texture2D texture, int height, ref int patchColumnIndex, int columnOffsetIndex, int yOffset, Palette palette)
         {
             while (_PatchData[patchColumnIndex].TopDelta != 0xFF)
             {
-                int yPos = yOrigin + _PatchData[patchColumnIndex].TopDelta;
+                int yPos =  (yOffset + _PatchData[patchColumnIndex].TopDelta);
                 int maxRun = _PatchData[patchColumnIndex].Length;
 
-
+                
                 if (yPos < 0)
-                {                    
+                {                                        
                     maxRun -= yPos;
                     //yPos = 0;
                 }
 
                 
-                if (yPos + maxRun > height &&  yPos >= 0)
+                if (yPos + maxRun > height && yPos >= 0)
                 {
                     maxRun = height - yPos;
                 }
                 
-                               
+                yPos = height - (int)this._Height + yPos;
+
+                //Debug.Log($"yPos: {yPos}    maxRun: {maxRun}    texWidth: {texture.width}    texHeight: {height}    patchWidth: {_Width}    patchHeight: {_Height}    yOffset: {yOffset}    topDelta: {_PatchData[patchColumnIndex].TopDelta}");
                 for (int y = 0; y < maxRun; y++)
                 {
-                    int colDataIndex = Mathf.Abs(y % _PatchData[patchColumnIndex].Length);
-                    
-                    texture.SetPixel(columnOffsetIndex,
-                                     y + yPos,
-                                     palette[_PatchData[patchColumnIndex].GetColumnData(colDataIndex)]);
+                    int colDataIndex = Mathf.Abs(maxRun - y - 1) % _PatchData[patchColumnIndex].Length;
 
+                    texture.SetPixel(columnOffsetIndex,
+                                     y,
+                                     palette[_PatchData[patchColumnIndex].GetColumnData(colDataIndex)]);
                 } // end for y
 
 

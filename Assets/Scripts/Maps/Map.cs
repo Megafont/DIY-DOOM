@@ -34,8 +34,6 @@ namespace DIY_DOOM.Maps
 
         // This controls the size of the map. Note that the scaling uses division rather than multiplication.
         // The default value is 32, which makes the map 32x smaller than it would be if we pretend one DOOM unit is equal to one Unity unit.
-        // NOTE: In DOOM, one grid cell is 64 units. The grid lines mark every 16 grid cells (1024 DOOM units).
-        //       Lastly, a pixel is 16 DOOM units, so four of them is 64 units (one grid cell).
         private float _ScaleFactor; 
 
         private int _ActivePaletteIndex = 0;

@@ -116,11 +116,11 @@ namespace DIY_DOOM
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
+            _Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
-            _Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNSMAL1", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNPOIS", 0);
@@ -129,6 +129,7 @@ namespace DIY_DOOM
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
             //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
+            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("LITE3", 0);
 
 
         }

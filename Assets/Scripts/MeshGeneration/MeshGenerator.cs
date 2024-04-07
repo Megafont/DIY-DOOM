@@ -5,8 +5,6 @@ using UnityEngine;
 
 using DIY_DOOM.Maps;
 using DIY_DOOM.WADs.Data.Maps;
-using Unity.VisualScripting;
-using UnityEngine.UIElements;
 
 
 namespace DIY_DOOM.MeshGeneration
@@ -72,9 +70,13 @@ namespace DIY_DOOM.MeshGeneration
         public static SectorDef _CurLeftSectorDef;
         public static SectorDef _CurRightSectorDef;
 
+        public static MeshData _CurMeshData;
+
         public static Map _Map;
 
         public static Mesh _MapMesh;
+
+        public static float _PixelSizeInWorldUnits;
     
         public static Dictionary<string, MeshData> _SubMeshLookup;
 
@@ -88,6 +90,9 @@ namespace DIY_DOOM.MeshGeneration
 
             // Initialize the mesh data.
             _SubMeshLookup = new Dictionary<string, MeshData>();
+
+            // Calculate the size of a pixel in world units. See the comments for Map.ScaleFactor for more information on this.
+            _PixelSizeInWorldUnits = 16 / _Map.ScaleFactor;
 
             _DOOM_MaterialPrefab = DoomEngine.Settings.DOOM_MaterialPrefab;
             _DOOM_MissingTextureMaterial = DoomEngine.Settings.DOOM_MissingTextureMaterial;
@@ -113,10 +118,10 @@ namespace DIY_DOOM.MeshGeneration
                 GetLineDefInfo();
 
 
+                Debug.Log($"FLAGS: {_CurLineDef.Flags}");
                 if (!_CurLineDef.Flags.HasFlag(LineDefFlags.TwoSided))
                 {
                     GenerateFrontFace();
-                    break;
                 }
                 else
                 {
@@ -126,7 +131,7 @@ namespace DIY_DOOM.MeshGeneration
                 }
 
 
-                //break;
+                //if (i >= 10) break;
             }
 
 
@@ -138,10 +143,10 @@ namespace DIY_DOOM.MeshGeneration
             _LineDefStart = _Map.GetVertex(_CurLineDef.StartVertexID);
             _LineDefEnd = _Map.GetVertex(_CurLineDef.EndVertexID);
 
-            if (_CurLineDef.LeftSideDef >= 0)
-                _CurLeftSideDef = _Map.GetSideDef((uint) _CurLineDef.LeftSideDef);
-            if (_CurLineDef.RightSideDef >= 0)
-                _CurRightSideDef = _Map.GetSideDef((uint) _CurLineDef.RightSideDef);
+            if (_CurLineDef.LeftSideDefIndex >= 0)
+                _CurLeftSideDef = _Map.GetSideDef((uint) _CurLineDef.LeftSideDefIndex);
+            if (_CurLineDef.RightSideDefIndex >= 0)
+                _CurRightSideDef = _Map.GetSideDef((uint) _CurLineDef.RightSideDefIndex);
 
             _CurLeftSectorDef = _Map.GetSectorDef((uint) _CurLeftSideDef.SectorIndex);
             _CurRightSectorDef = _Map.GetSectorDef((uint) _CurRightSideDef.SectorIndex);
@@ -151,30 +156,41 @@ namespace DIY_DOOM.MeshGeneration
 
         private static void GenerateFrontFace()
         {
-            int firstVertIndex = _CurVertexIndex;
-
             float floorHeight = _CurRightSectorDef.FloorHeight;
             float ceilingHeight = _CurRightSectorDef.CeilingHeight;
 
-            _CurRightSideDef.DEBUG_Print();
+            
+            //_CurLeftSideDef.DEBUG_Print();
+            if (_CurLineDef.RightSideDefIndex == 28)
+                _CurRightSideDef.DEBUG_Print();
 
-            MeshData meshData = GetMeshData(_CurRightSideDef.MiddleTextureName);
+            // Get the appropriate MeshData object, and store it in _CurMeshData.
+            GetMeshData(_CurRightSideDef.MiddleTextureName);
+
+            int firstVertIndex = _CurMeshData.Vertices.Count;
+
 
             // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
             //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
 
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, floorHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, ceilingHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, ceilingHeight, _LineDefEnd.z));
 
-            meshData.Vertices.Add(new Vector3(_LineDefStart.x, floorHeight, _LineDefStart.z));
-            meshData.Vertices.Add(new Vector3(_LineDefStart.x, ceilingHeight, _LineDefStart.z));
-            meshData.Vertices.Add(new Vector3(_LineDefEnd.x, ceilingHeight, _LineDefEnd.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, floorHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, ceilingHeight, _LineDefEnd.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, floorHeight, _LineDefEnd.z));
 
-            meshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
+            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
+            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
 
-            meshData.Vertices.Add(new Vector3(_LineDefStart.x, floorHeight, _LineDefStart.z));
-            meshData.Vertices.Add(new Vector3(_LineDefEnd.x, ceilingHeight, _LineDefEnd.z));
-            meshData.Vertices.Add(new Vector3(_LineDefEnd.x, floorHeight, _LineDefEnd.z));
+            //Debug.Log($"{_LineDefStart}    {_LineDefEnd}    {Vector3.Distance(_LineDefStart, _LineDefEnd)}");
 
-            meshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
+            GenerateUVsForSingleSidedLineDef(_CurLineDef.Flags,
+                                             Vector3.Distance(_LineDefStart, _LineDefEnd),
+                                             ceilingHeight - floorHeight);
+
+
 
             /*
             _MapVertices.Add(MapUtils.Point2dTo3dXZ(_LineDefStart.x, _LineDefStart.y, floorHeight));
@@ -193,6 +209,58 @@ namespace DIY_DOOM.MeshGeneration
             */
         }
 
+        private static void GenerateUVsForSingleSidedLineDef(LineDefFlags faceFlags, float faceWidth, float faceHeight)
+        {
+            float top;
+            float bottom;
+            float left;
+            float right;
+
+
+            // We multiply faceWidth by the scaleFactor to convert back to DOOM units. This is because a 1m section of wall is 64 pixels wide.
+            // Then we divide by the texture width to find out how many texture repeats will fit across the length of the wall.
+            float textureRepeatsX = (faceWidth * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.width;
+            float textureRepeatsY = (faceHeight * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.height;
+
+            float xOffset = (float) _CurRightSideDef.X_Offset / _CurMeshData.Material.mainTexture.width;
+            float yOffset = (float) _CurRightSideDef.Y_Offset / _CurMeshData.Material.mainTexture.height;
+
+            //Debug.Log($"{_CurMeshData.Material.mainTexture.width}x{_CurMeshData.Material.mainTexture.height}    {_PixelSizeInWorldUnits}    {faceWidth}    {textureRepeatsX}");
+
+            if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
+            {
+                // The top of the texture is snapped to the ceiling.
+                left = 0;
+                right = textureRepeatsX;
+                top = 1;
+                bottom = top - textureRepeatsY;
+            }
+            else
+            {
+                // The bottom of the texture is snapped to the floor.
+                left = 0;
+                right = textureRepeatsX;
+                top = textureRepeatsY;
+                bottom = 0;
+            }
+
+            Debug.Log($"yOffset: {yOffset}    {_CurRightSideDef.Y_Offset}    {_CurMeshData.Material.mainTexture.height}");
+            left += xOffset;
+            right += xOffset;
+            top += yOffset;
+            bottom += yOffset;
+
+
+            _CurMeshData.UVs.Add(new Vector2(left, bottom));
+            _CurMeshData.UVs.Add(new Vector2(left, top));
+            _CurMeshData.UVs.Add(new Vector2(right, top));
+
+            _CurMeshData.UVs.Add(new Vector2(left, bottom));
+            _CurMeshData.UVs.Add(new Vector2(right, top));
+            _CurMeshData.UVs.Add(new Vector2(right, bottom));
+        }
+
+
         private static Material GetMaterial(string textureName)
         {
             Material newMaterial;
@@ -202,11 +270,13 @@ namespace DIY_DOOM.MeshGeneration
             if (texture != null)
             {
                 newMaterial = new Material(_DOOM_MaterialPrefab);
+                newMaterial.name = $"({textureName})";
                 newMaterial.mainTexture = texture;
             }
             else
             {
                 newMaterial = new Material(_DOOM_MissingTextureMaterial);
+                newMaterial.name = $"({textureName})";
                 Debug.LogError($"Could not find texture \"{textureName}\" in the AssetManager. This face will be rendered with the missing texture material.");
             }
 
@@ -214,18 +284,25 @@ namespace DIY_DOOM.MeshGeneration
             return newMaterial;
         }
 
-        private static MeshData GetMeshData(string textureName)
+        /// <summary>
+        /// Checks if the specified texture name is already associated with a subMesh or not.
+        /// If so, it is retrieved and stored in _CurMeshData.
+        /// If not, then a new MeshData object is created for the specified texture name.
+        /// </summary>
+        /// <param name="textureName"></param>
+        /// <returns>True if the texture name already has a MeshData object associated with it, false if not.</returns>
+        private static bool GetMeshData(string textureName)
         {
-            if (_SubMeshLookup.TryGetValue(textureName, out MeshData meshData))
-                return meshData;
+            Debug.Log($"NAME2: \"{textureName}\"");
 
+            if (_SubMeshLookup.TryGetValue(textureName, out _CurMeshData))
+                return true;
 
-            MeshData newMeshData;
-            
-            newMeshData = new MeshData(textureName, GetMaterial(textureName));
-            _SubMeshLookup.Add(textureName, newMeshData);
+           
+            _CurMeshData = new MeshData(textureName, GetMaterial(textureName));
+            _SubMeshLookup.Add(textureName, _CurMeshData);
 
-            return newMeshData;
+            return false;
         }
 
         private static MeshGenOutput CreateOutputObject()

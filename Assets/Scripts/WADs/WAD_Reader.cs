@@ -102,8 +102,8 @@ namespace DIY_DOOM.WADs
             lineDef.LineType = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
             lineDef.SectorTag = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
             
-            lineDef.RightSideDef = BitConverter.ToInt16(Read2Bytes(wadData, offset + 10));
-            lineDef.LeftSideDef = BitConverter.ToInt16(Read2Bytes(wadData, offset + 12));
+            lineDef.RightSideDefIndex = BitConverter.ToInt16(Read2Bytes(wadData, offset + 10));
+            lineDef.LeftSideDefIndex = BitConverter.ToInt16(Read2Bytes(wadData, offset + 12));
 
             return lineDef;
         }
