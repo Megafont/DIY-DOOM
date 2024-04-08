@@ -247,8 +247,8 @@ namespace DIY_DOOM.MeshGeneration
             Debug.Log($"yOffset: {yOffset}    {_CurRightSideDef.Y_Offset}    {_CurMeshData.Material.mainTexture.height}");
             left += xOffset;
             right += xOffset;
-            top += yOffset;
-            bottom += yOffset;
+            top -= yOffset;
+            bottom -= yOffset;
 
 
             _CurMeshData.UVs.Add(new Vector2(left, bottom));
