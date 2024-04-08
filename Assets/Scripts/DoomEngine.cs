@@ -31,7 +31,8 @@ namespace DIY_DOOM
 
         [Header("Testing")]
 
-        [SerializeField] private MeshRenderer _TextureTestObject;
+        [SerializeField] private MeshRenderer _TextureTestObject_1;
+        [SerializeField] private MeshRenderer _TextureTestObject_2;
 
 
         private AssetManager _AssetManager;
@@ -46,14 +47,15 @@ namespace DIY_DOOM
         {
             if (_LevelGeometryObject == null)
                 throw new Exception("The LevelGeometryObject is not set in the inspector!");
-            if (_TextureTestObject == null)
+            if (_TextureTestObject_1 == null)
                 throw new Exception("The TextureTestObject is not set in the inspector!");
 
 
             Settings = _Settings;
 
             Settings.LevelGeometryObject = _LevelGeometryObject;
-            Settings.TextureTestObject = _TextureTestObject;
+            Settings.TextureTestObject_1 = _TextureTestObject_1;
+            Settings.TextureTestObject_2 = _TextureTestObject_2;
 
             _WAD_Loader = new WAD_Loader();
             _AssetManager = new AssetManager(_WAD_Loader);
@@ -111,25 +113,27 @@ namespace DIY_DOOM
 
         private void DEBUG_DoTextureTest()
         {
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("WALL00_6", 0);
 
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
-            _Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNSMAL1", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNPOIS", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("BRNPOIS2", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("EXITDOOR", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
-            //_Settings.TextureTestObject.material.mainTexture = _AssetManager.GetTexture("LITE3", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
+            _Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("COMP2", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BRNSMAL1", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BRNPOIS", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BRNPOIS2", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("EXITDOOR", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
+            
+            _Settings.TextureTestObject_2.material.mainTexture = _AssetManager.GetTexture("LITE3", 0);
 
 
         }

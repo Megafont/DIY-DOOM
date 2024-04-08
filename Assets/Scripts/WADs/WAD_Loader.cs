@@ -679,7 +679,7 @@ namespace DIY_DOOM.WADs
                 }
 
             }
-            
+
 
             _AssetManager.AddRawPatchData(patchName, patch);
 

@@ -147,14 +147,20 @@ namespace DIY_DOOM.WADs.Data.Textures
                     maxWidth = (int) Width;
                 }
 
-                if (YES)
-                    Debug.Log($"[{i}]    {xPos},{_TexturePatches[i].Y_Offset}    {patch.Y_Offset}");
+                //if (YES)
+                    Debug.Log($"[{i}]    PatchOffsets: {xPos},{_TexturePatches[i].Y_Offset}    TexSize: {Width}x{Height}");
 
                 while (xPos < maxWidth)
                 {
                     int patchColumnIndex = patch.GetColumnDataIndex(xPos - xStart);
-                    patch.ComposeColumn(texture, 
-                                        (int) Height, 
+
+                    /*
+                    patch.ComposeColumn2(texture,
+                                        (int)xPos,
+                                        _TexturePatches[i].Y_Offset,
+                                        palette);
+                    */
+                    patch.ComposeColumn2(texture, 
                                         ref patchColumnIndex, 
                                         (int) xPos,
                                         _TexturePatches[i].Y_Offset, 

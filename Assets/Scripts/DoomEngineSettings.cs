@@ -48,8 +48,8 @@ namespace DIY_DOOM
         [Tooltip("This is the GameObject that will hold the 3D geometry of the map. It must have a MeshFilter and a MeshRender component on it!")]
         [SerializeField] public LevelGeometry LevelGeometryObject;
 
-        [SerializeField] public MeshRenderer TextureTestObject;
-
+        [SerializeField] public MeshRenderer TextureTestObject_1;
+        [SerializeField] public MeshRenderer TextureTestObject_2;
 
     }
 }
