@@ -31,9 +31,6 @@ namespace DIY_DOOM
 
         [Header("Testing")]
 
-        [SerializeField] private MeshRenderer _TextureTestObject_1;
-        [SerializeField] private MeshRenderer _TextureTestObject_2;
-
 
         private AssetManager _AssetManager;
         private WAD_Loader _WAD_Loader;
@@ -47,15 +44,11 @@ namespace DIY_DOOM
         {
             if (_LevelGeometryObject == null)
                 throw new Exception("The LevelGeometryObject is not set in the inspector!");
-            if (_TextureTestObject_1 == null)
-                throw new Exception("The TextureTestObject is not set in the inspector!");
 
 
             Settings = _Settings;
 
             Settings.LevelGeometryObject = _LevelGeometryObject;
-            Settings.TextureTestObject_1 = _TextureTestObject_1;
-            Settings.TextureTestObject_2 = _TextureTestObject_2;
 
             _WAD_Loader = new WAD_Loader();
             _AssetManager = new AssetManager(_WAD_Loader);
@@ -78,11 +71,16 @@ namespace DIY_DOOM
             bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + _Settings.WAD_Path);
             bool loadedMapData = _WAD_Loader.LoadMapData(_Settings.MapToLoad, out Map map);
 
-            InitAutoMap(map);
 
-            DEBUG_DoTextureTest();
+            if (_Settings.EnableAutoMap)
+                InitAutoMap(map);
 
-            _Settings.LevelGeometryObject.SetMap(map);
+            if (_Settings.EnableTextureRenderingTester)
+                DEBUG_DoTextureTest();
+
+            if (_Settings.EnableGeometryGeneration)
+                _Settings.LevelGeometryObject.SetMap(map);
+
 
             return loadedWAD && loadedMapData;
         }
@@ -113,13 +111,17 @@ namespace DIY_DOOM
 
         private void DEBUG_DoTextureTest()
         {
+            TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("BROWN144", 0));
+            TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("LITE3", 0));
+            TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("BRNBIGC", 0));
+
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("WALL00_6", 0);
 
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("AASTINKY", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BROWN1", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BROWNPIP", 0);
-            _Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BROWN144", 0);
+            //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BRNBIGC", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BIGDOOR1", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BIGDOOR2", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("BIGDOOR4", 0);
@@ -132,8 +134,8 @@ namespace DIY_DOOM
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("SKY1", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("TEKWALL5", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("SW1DIRT", 0);
-            
-            _Settings.TextureTestObject_2.material.mainTexture = _AssetManager.GetTexture("LITE3", 0);
+
+            //_Settings.TextureTestObject_2.material.mainTexture = _AssetManager.GetTexture("LITE3", 0);
 
 
         }

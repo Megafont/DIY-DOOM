@@ -125,7 +125,6 @@ namespace DIY_DOOM.WADs.Data.Textures
 
             Texture2D texture = TextureUtils.CreateBlankDoomTexture(TextureName, (int) Width, (int) Height);
 
-
             for (int i = 0; i < _TexturePatches.Count; i++)
             {
                 // Get the texture patch info.
@@ -146,10 +145,12 @@ namespace DIY_DOOM.WADs.Data.Textures
                     maxWidth = (int) Width;
                 }
 
-
+                //Debug.Log($"    xPos: {xPos}    maxWidth: {maxWidth}    Patch X Offset: {_TexturePatches[i].X_Offset}    Patch Y Offset: {_TexturePatches[i].Y_Offset}");
                 while (xPos < maxWidth)
                 {
                     int patchColumnIndex = patch.GetColumnDataIndex(xPos - xStart);
+
+                    //Debug.Log($"PCI: {patchColumnIndex}    {xPos}    {xStart}");
 
                     patch.ComposeColumn(texture, 
                                         ref patchColumnIndex, 

@@ -25,5 +25,12 @@ namespace DIY_DOOM.Utils.Textures
             return texture;
         }
 
+        public static bool IsNameValid(string textureName)
+        {
+            return textureName != null &&
+                   !string.IsNullOrWhiteSpace(textureName) && 
+                   textureName != "-";
+        }
+
     }
 }

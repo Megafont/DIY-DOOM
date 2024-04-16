@@ -24,4 +24,6 @@ MonoBehaviour:
     serializedVersion: 2
     rgba: 0
   LevelGeometryObject: {fileID: 0}
-  TextureTestObject: {fileID: 0}
+  EnableAutoMap: 1
+  EnableTextureRenderingTester: 1
+  EnableGeometryGeneration: 1
