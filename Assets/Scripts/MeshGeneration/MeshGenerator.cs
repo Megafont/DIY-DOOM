@@ -47,6 +47,48 @@ namespace DIY_DOOM.MeshGeneration
             UVs.Clear();
         }
     }
+    
+
+    public struct FaceUvBounds
+    {
+        public float Bottom;
+        public float Left;
+        public float Top;
+        public float Right;
+
+
+
+        public static FaceUvBounds Default
+        {
+            get
+            {
+                return new FaceUvBounds() { Bottom = 0, Left = 0, Top = 1, Right = 1 };
+            }
+        }
+
+        public void ApplyTextureOffset(Vector2 textureOffset)
+        {
+            Left += textureOffset.x;
+            Right += textureOffset.x;
+
+            Top -= textureOffset.y;
+            Bottom -= textureOffset.y;
+        }
+
+        public override string ToString()
+        {
+            return $"({Left},{Bottom})-({Right}, {Top})";
+        }
+    }
+
+    public struct FaceFrontAndBackData
+    {
+        public SideDef FrontSideDef;
+        public SideDef BackSideDef;
+
+        public SectorDef FrontSectorDef;
+        public SectorDef BackSectorDef;
+    }
 
 
 
@@ -86,6 +128,8 @@ namespace DIY_DOOM.MeshGeneration
 
         public static SectorDef _CurLeftSectorDef;
         public static SectorDef _CurRightSectorDef;
+
+        public static FaceFrontAndBackData _CurFaceFrontAndBackData;
 
         public static MeshData _CurMeshData;
 
@@ -137,16 +181,25 @@ namespace DIY_DOOM.MeshGeneration
 
                 if (!_CurLineDef.Flags.HasFlag(LineDefFlags.TwoSided))
                 {
-                    GenerateLineDefGeometry_SingleSided();
+                    GenerateLineDefGeometry_SingleSided(true);
                 }
-                else
-                {                    
+                else // This is a two-sided lineDef.
+                {       
+                    // Draw the front face(s).
                     if (TextureUtils.IsNameValid(_CurRightSideDef.LowerTextureName))
-                        GenerateLineDefGeometry_DoubleSided_LowerTexture();
+                        GenerateLineDefGeometry_DoubleSided_LowerTexture(true);
                     if (TextureUtils.IsNameValid(_CurRightSideDef.UpperTextureName))
-                        GenerateLineDefGeometry_DoubleSided_UpperTexture();
+                        GenerateLineDefGeometry_DoubleSided_UpperTexture(true);
                     if (TextureUtils.IsNameValid(_CurRightSideDef.MiddleTextureName))
-                        GenerateLineDefGeometry_DoubleSided_MiddleTexture();
+                        GenerateLineDefGeometry_DoubleSided_MiddleTexture(true);
+
+                    // Draw the back face(s).
+                    if (TextureUtils.IsNameValid(_CurLeftSideDef.LowerTextureName))
+                        GenerateLineDefGeometry_DoubleSided_LowerTexture(false);
+                    if (TextureUtils.IsNameValid(_CurLeftSideDef.UpperTextureName))
+                        GenerateLineDefGeometry_DoubleSided_UpperTexture(false);
+                    if (TextureUtils.IsNameValid(_CurLeftSideDef.MiddleTextureName))
+                        GenerateLineDefGeometry_DoubleSided_MiddleTexture(false);
                 }
 
             } // end for i
@@ -166,217 +219,303 @@ namespace DIY_DOOM.MeshGeneration
                 _CurRightSideDef = _Map.GetSideDef((uint) _CurLineDef.RightSideDefIndex);
 
             _CurLeftSectorDef = _Map.GetSectorDef((uint) _CurLeftSideDef.SectorIndex);
-            _CurRightSectorDef = _Map.GetSectorDef((uint) _CurRightSideDef.SectorIndex);
+            _CurRightSectorDef = _Map.GetSectorDef((uint) _CurRightSideDef.SectorIndex);            
+        }
 
+        private static void GenerateLineDefGeometry_SingleSided(bool isFrontFace)
+        {
+            _CurFaceFrontAndBackData = GetFaceFrontAndBackData(isFrontFace);
+
+            float floorHeight = _CurFaceFrontAndBackData.FrontSectorDef.FloorHeight;
+            float ceilingHeight = _CurFaceFrontAndBackData.FrontSectorDef.CeilingHeight;
+
+
+            // Get the appropriate MeshData object, and store it in _CurMeshData.
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.MiddleTextureName);
+
+            Vector2 faceSize = CalculateFaceSize(floorHeight, ceilingHeight);
+            FaceUvBounds uvBounds = CalculateUvBoundsFor_SingleSidedLineDef_LowerTexture(_CurLineDef.Flags, faceSize);
             
+
+            if (isFrontFace)
+            {
+                GenerateVerticesForFrontFace(floorHeight, ceilingHeight);
+                GenerateUVsForFrontFace(uvBounds);
+            }
+            else
+            {
+                GenerateVerticesForBackFace(floorHeight, ceilingHeight);
+                GenerateUVsForBackFace(uvBounds);
+            }
         }
 
-        private static void GenerateLineDefGeometry_SingleSided()
+        private static void GenerateLineDefGeometry_DoubleSided_LowerTexture(bool isFrontFace)
         {
-            float floorHeight = _CurRightSectorDef.FloorHeight;
-            float ceilingHeight = _CurRightSectorDef.CeilingHeight;
+            _CurFaceFrontAndBackData = GetFaceFrontAndBackData(isFrontFace);
 
+            float highestFloor = Mathf.Max(_CurFaceFrontAndBackData.BackSectorDef.FloorHeight, _CurFaceFrontAndBackData.FrontSectorDef.FloorHeight);
+            float lowestFloor = Mathf.Min(_CurFaceFrontAndBackData.BackSectorDef.FloorHeight, _CurFaceFrontAndBackData.FrontSectorDef.FloorHeight);
 
-            //_CurLeftSideDef.DEBUG_Print();
-            //_CurRightSideDef.DEBUG_Print();
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurRightSideDef.MiddleTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.LowerTextureName);
 
-            int firstVertIndex = _CurMeshData.Vertices.Count;
-
-
-            // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
-            //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, floorHeight, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, ceilingHeight, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, ceilingHeight, _LineDefEnd.z));
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, floorHeight, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, ceilingHeight, _LineDefEnd.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, floorHeight, _LineDefEnd.z));
-
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
+            Vector2 faceSize = CalculateFaceSize(lowestFloor, highestFloor);
+            FaceUvBounds uvBounds = CalculateUvBoundsFor_DoubleSidedLineDef_LowerTexture(_CurLineDef.Flags, faceSize);
 
 
-            GenerateUVsForSingleSidedLineDef(_CurLineDef.Flags,
-                                             Vector3.Distance(_LineDefStart, _LineDefEnd),
-                                             ceilingHeight - floorHeight);
+            if (isFrontFace)
+            {
+                GenerateVerticesForFrontFace(lowestFloor, highestFloor);
+                GenerateUVsForFrontFace(uvBounds);
+            }
+            else
+            {
+                GenerateVerticesForBackFace(lowestFloor, highestFloor);
+                GenerateUVsForBackFace(uvBounds);
+            }
         }
 
-        private static void GenerateLineDefGeometry_DoubleSided_LowerTexture()
+        private static void GenerateLineDefGeometry_DoubleSided_UpperTexture(bool isFrontFace)
         {
-            float highestFloor = Mathf.Max(_CurLeftSectorDef.FloorHeight, _CurRightSectorDef.FloorHeight);
-            float lowestFloor = Mathf.Min(_CurLeftSectorDef.FloorHeight, _CurRightSectorDef.FloorHeight);
+            _CurFaceFrontAndBackData = GetFaceFrontAndBackData(isFrontFace);
+
+            float highestCeiling = Mathf.Max(_CurFaceFrontAndBackData.BackSectorDef.CeilingHeight, _CurFaceFrontAndBackData.FrontSectorDef.CeilingHeight);
+            float lowestCeiling = Mathf.Min(_CurFaceFrontAndBackData.BackSectorDef.CeilingHeight, _CurFaceFrontAndBackData.FrontSectorDef.CeilingHeight);
+
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurRightSideDef.LowerTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.UpperTextureName);
 
-            int firstVertIndex = _CurMeshData.Vertices.Count;
-
-
-            // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
-            //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, lowestFloor, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, highestFloor, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, highestFloor, _LineDefEnd.z));
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, lowestFloor, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, highestFloor, _LineDefEnd.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, lowestFloor, _LineDefEnd.z));
-
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
+            Vector2 faceSize = CalculateFaceSize(lowestCeiling, highestCeiling);
+            FaceUvBounds uvBounds = CalculateUvBoundsFor_DoubleSidedLineDef_UpperTexture(_CurLineDef.Flags, faceSize);
 
 
-            GenerateUVsForDoubleSidedLineDef_LowerTexture(_CurLineDef.Flags,
-                                                           Vector3.Distance(_LineDefStart, _LineDefEnd),
-                                                           highestFloor - lowestFloor);
+            if (isFrontFace)
+            {
+                GenerateVerticesForFrontFace(lowestCeiling, highestCeiling);
+                GenerateUVsForFrontFace(uvBounds);
+            }
+            else
+            {
+                GenerateVerticesForBackFace(lowestCeiling, highestCeiling);
+                GenerateUVsForBackFace(uvBounds);
+            }   
         }
 
-        private static void GenerateLineDefGeometry_DoubleSided_UpperTexture()
+        private static void GenerateLineDefGeometry_DoubleSided_MiddleTexture(bool isFrontFace)
         {
-            float highestCeiling = Mathf.Max(_CurLeftSectorDef.CeilingHeight, _CurRightSectorDef.CeilingHeight);
-            float lowestCeiling = Mathf.Min(_CurLeftSectorDef.CeilingHeight, _CurRightSectorDef.CeilingHeight);
+            _CurFaceFrontAndBackData = GetFaceFrontAndBackData(isFrontFace);
+
+            float highestFloor = Mathf.Max(_CurFaceFrontAndBackData.BackSectorDef.FloorHeight, _CurFaceFrontAndBackData.FrontSectorDef.FloorHeight);
+            float lowestCeiling = Mathf.Min(_CurFaceFrontAndBackData.BackSectorDef.CeilingHeight, _CurFaceFrontAndBackData.FrontSectorDef.CeilingHeight);
+            float highestCeiling = Mathf.Max(_CurFaceFrontAndBackData.BackSectorDef.CeilingHeight, _CurFaceFrontAndBackData.FrontSectorDef.CeilingHeight);
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurRightSideDef.UpperTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.MiddleTextureName);
 
-            int firstVertIndex = _CurMeshData.Vertices.Count;
+            Vector2 faceSize = CalculateFaceSize(highestFloor, lowestCeiling);
+            FaceUvBounds uvBounds = CalculateUvBoundsFor_DoubleSidedLineDef_MiddleTexture(_CurLineDef.Flags, faceSize, highestCeiling - lowestCeiling);
+          
 
-
-            // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
-            //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, lowestCeiling, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, highestCeiling, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, highestCeiling, _LineDefEnd.z));
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, lowestCeiling, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, highestCeiling, _LineDefEnd.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, lowestCeiling, _LineDefEnd.z));
-
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
-
-
-            GenerateUVsForDoubleSidedLineDef_UpperTexture(_CurLineDef.Flags,
-                                                           Vector3.Distance(_LineDefStart, _LineDefEnd),
-                                                           highestCeiling - lowestCeiling);
+            if (isFrontFace)
+            {
+                GenerateVerticesForFrontFace(highestFloor, lowestCeiling);
+                GenerateUVsForFrontFace(uvBounds);
+            }
+            else
+            {
+                GenerateVerticesForBackFace(highestFloor, lowestCeiling);
+                GenerateUVsForBackFace(uvBounds);
+            }
         }
 
-        private static void GenerateLineDefGeometry_DoubleSided_MiddleTexture()
+        private static FaceUvBounds CalculateUvBoundsFor_SingleSidedLineDef_LowerTexture(LineDefFlags faceFlags, Vector2 faceSize)
         {
-            float highestFloor = Mathf.Max(_CurLeftSectorDef.FloorHeight, _CurRightSectorDef.FloorHeight);
-            float lowestCeiling = Mathf.Min(_CurLeftSectorDef.CeilingHeight, _CurRightSectorDef.CeilingHeight);
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
 
-            // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurRightSideDef.MiddleTextureName);
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
 
-            int firstVertIndex = _CurMeshData.Vertices.Count;
-
-
-            //Debug.Log($"\"{_CurMeshData.Material.mainTexture.name}\"    FloorL: {_CurLeftSectorDef.FloorHeight}    FloorR: {_CurRightSectorDef.FloorHeight}    CeilL: {_CurLeftSectorDef.CeilingHeight}    CeilR: {_CurRightSectorDef.CeilingHeight}    HighestFloor: {highestFloor}    LowestCeil: {lowestCeiling}");
-
-
-            // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
-            //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, lowestCeiling, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, highestFloor, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, highestFloor, _LineDefEnd.z));
-
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, lowestCeiling, _LineDefStart.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, highestFloor, _LineDefEnd.z));
-            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, lowestCeiling, _LineDefEnd.z));
-
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
-            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
-
-
-            GenerateUVsForDoubleSidedLineDef_MiddleTexture(_CurLineDef.Flags,
-                                                           Vector3.Distance(_LineDefStart, _LineDefEnd),
-                                                           lowestCeiling - highestFloor);
-        }
-
-        private static void GenerateUVsForSingleSidedLineDef(LineDefFlags faceFlags, float faceWidth, float faceHeight)
-        {
-            float top = 0;
-            float bottom = 0;
-            float left = 1;
-            float right = 1;
-
-
-            // We multiply faceWidth by the scaleFactor to convert back to DOOM units. This is because a 1m section of wall is 64 pixels wide.
-            // Then we divide by the texture width to find out how many texture repeats will fit across the length of the wall.
-            float textureRepeatsX = (faceWidth * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.width;
-            float textureRepeatsY = (faceHeight * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.height;
-
-            float xOffset = (float)_CurRightSideDef.X_Offset / _CurMeshData.Material.mainTexture.width;
-            float yOffset = (float)_CurRightSideDef.Y_Offset / _CurMeshData.Material.mainTexture.height;
-
-            //Debug.Log($"{_CurMeshData.Material.mainTexture.width}x{_CurMeshData.Material.mainTexture.height}    {_PixelSizeInWorldUnits}    {faceWidth}    {textureRepeatsX}");
 
             if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
             {
                 // The top of the texture is snapped to the ceiling.
-                left = 0;
-                right = textureRepeatsX;
-                top = 1;
-                bottom = top - textureRepeatsY;
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
             }
             else
             {
                 // The bottom of the texture is snapped to the floor.
-                left = 0;
-                right = textureRepeatsX;
-                top = textureRepeatsY;
-                bottom = 0;
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = textureRepeats.y;
+                uvBounds.Bottom = 0;
             }
 
-            left += xOffset;
-            right += xOffset;
-            top -= yOffset;
-            bottom -= yOffset;
 
+            uvBounds.ApplyTextureOffset(textureOffset);
 
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(left, top));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-            _CurMeshData.UVs.Add(new Vector2(right, bottom));
+            return uvBounds;
         }
 
-        private static void GenerateUVsForDoubleSidedLineDef_LowerTexture(LineDefFlags faceFlags, float faceWidth, float faceHeight)
+        private static FaceUvBounds CalculateUvBoundsFor_DoubleSidedLineDef_LowerTexture(LineDefFlags faceFlags, Vector2 faceSize)
         {
-            float top = 1;
-            float bottom = 0;
-            float left = 0;
-            float right = 1;
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
 
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
 
-            // We multiply faceWidth by the scaleFactor to convert back to DOOM units. This is because a 1m section of wall is 64 pixels wide.
-            // Then we divide by the texture width to find out how many texture repeats will fit across the length of the wall.
-            float textureRepeatsX = (faceWidth * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.width;
-            float textureRepeatsY = (faceHeight * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.height;
-
-            float xOffset = (float)_CurRightSideDef.X_Offset / _CurMeshData.Material.mainTexture.width;
-            float yOffset = (float)_CurRightSideDef.Y_Offset / _CurMeshData.Material.mainTexture.height;
-
-            //Debug.Log($"{_CurMeshData.Material.mainTexture.width}x{_CurMeshData.Material.mainTexture.height}    {_PixelSizeInWorldUnits}    {faceWidth}    {textureRepeatsX}");
 
             if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
             {
                 // The bottom of the texture is snapped to the lower floor.
-                left = 0;
-                right = textureRepeatsX;
-                top = 1;
-                bottom = top - textureRepeatsY;
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
+            }
+            else // Lower Texture Is Unpegged))
+            {
+                // This is using the left sector's floor height on purpose, as we need to compare the floor height on the back side of this wall to the ceiling height of the sector directly in front of this wall.
+                float heightFromFloorToCeiling = (_CurRightSectorDef.CeilingHeight - _CurLeftSectorDef.FloorHeight) * _Map.ScaleFactor;
+                float textureRepeatsFromCeilingToFloor = heightFromFloorToCeiling / _CurMeshData.Material.mainTexture.height;
+
+                // The top of the texture is snapped to the ceiling.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1 - textureRepeatsFromCeilingToFloor;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
+            }
+
+
+            uvBounds.ApplyTextureOffset(textureOffset);
+
+            return uvBounds;
+        }
+
+        private static FaceUvBounds CalculateUvBoundsFor_DoubleSidedLineDef_UpperTexture(LineDefFlags faceFlags, Vector2 faceSize)
+        {
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
+
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
+
+
+            if (!faceFlags.HasFlag(LineDefFlags.UpperTextureIsUnpegged))
+            {
+                // The bottom of the texture is aligned to the lowest ceiling
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = textureRepeats.y;
+                uvBounds.Bottom = 0;
+            }
+            else // Upper Texture Is Unpegged
+            {
+                // The top of the texture is aligned to the highest ceiling.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
+            }
+
+
+            uvBounds.ApplyTextureOffset(textureOffset);
+
+            return uvBounds;
+        }
+
+        private static FaceUvBounds CalculateUvBoundsFor_DoubleSidedLineDef_MiddleTexture(LineDefFlags faceFlags, Vector2 faceSize, float ceilingHeightsDifference)
+        {
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
+
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
+
+            // ******************************************************************************************
+            // CHANGE THIS CODE SO THE TOP OF THE TEXTURE IS SNAPPED TO THE HIGHEST CEILING
+            // ******************************************************************************************
+
+
+            if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
+            {
+                // The top of the texture is snapped to the ceiling.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
+            }
+            else
+            {
+                // The bottom of the texture is snapped to the floor.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = textureRepeats.y;
+                uvBounds.Bottom = 0;
+            }
+
+            /*
+                // The top of the texture is snapped to the lowest ceiling.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = 0;
+            */
+
+
+            uvBounds.ApplyTextureOffset(textureOffset);
+
+            return uvBounds;
+        }
+
+        private static void GenerateUVsForSingleSidedLineDef(LineDefFlags faceFlags, Vector2 faceSize)
+        {
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
+
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
+
+
+            if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
+            {
+                // The top of the texture is snapped to the ceiling.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
+            }
+            else
+            {
+                // The bottom of the texture is snapped to the floor.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = textureRepeats.y;
+                uvBounds.Bottom = 0;
+            }
+
+
+            uvBounds.ApplyTextureOffset(textureOffset);
+
+            GenerateUVsForFrontFace(uvBounds);
+        }
+
+        private static void GenerateUVsForDoubleSidedLineDef_LowerTexture(LineDefFlags faceFlags, Vector2 faceSize)
+        {
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
+
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
+
+
+            if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
+            {
+                // The bottom of the texture is snapped to the lower floor.
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
             }
             else if (faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
             {
@@ -384,118 +523,184 @@ namespace DIY_DOOM.MeshGeneration
                 float heightFromFloorToCeiling = (_CurRightSectorDef.CeilingHeight - _CurLeftSectorDef.FloorHeight) * _Map.ScaleFactor;
                 float textureRepeatsFromCeilingToFloor = heightFromFloorToCeiling / _CurMeshData.Material.mainTexture.height;
 
-                //Debug.Log($"\"{_CurMeshData.Material.mainTexture.name}\"    {_CurLeftSectorDef.FloorHeight}    {_CurLeftSectorDef.CeilingHeight}    {_CurRightSectorDef.FloorHeight}    {_CurRightSectorDef.CeilingHeight}    {heightFromFloorToCeiling}    {textureRepeatsFromCeilingToFloor}    {_CurMeshData.Material.mainTexture.height}");
-
                 // The top of the texture is snapped to the ceiling.
-                left = 0;
-                right = textureRepeatsX;
-                top = 1 - textureRepeatsFromCeilingToFloor;
-                bottom = top - textureRepeatsY;
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1 - textureRepeatsFromCeilingToFloor;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
             }
 
-            left += xOffset;
-            right += xOffset;
-            top -= yOffset;
-            bottom -= yOffset;
+            uvBounds.ApplyTextureOffset(textureOffset);
 
-
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(left, top));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-            _CurMeshData.UVs.Add(new Vector2(right, bottom));
+            GenerateUVsForFrontFace(uvBounds);
         }
 
-        private static void GenerateUVsForDoubleSidedLineDef_UpperTexture(LineDefFlags faceFlags, float faceWidth, float faceHeight)
+        private static void GenerateUVsForDoubleSidedLineDef_UpperTexture(LineDefFlags faceFlags, Vector2 faceSize)
         {
-            float top = 1;
-            float bottom = 0;
-            float left = 0;
-            float right = 1;
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
 
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
 
-            // We multiply faceWidth by the scaleFactor to convert back to DOOM units. This is because a 1m section of wall is 64 pixels wide.
-            // Then we divide by the texture width to find out how many texture repeats will fit across the length of the wall.
-            float textureRepeatsX = (faceWidth * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.width;
-            float textureRepeatsY = (faceHeight * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.height;
-
-            float xOffset = (float)_CurRightSideDef.X_Offset / _CurMeshData.Material.mainTexture.width;
-            float yOffset = (float)_CurRightSideDef.Y_Offset / _CurMeshData.Material.mainTexture.height;
-
-            //Debug.Log($"{_CurMeshData.Material.mainTexture.width}x{_CurMeshData.Material.mainTexture.height}    {_PixelSizeInWorldUnits}    {faceWidth}    {textureRepeatsX}");
 
             if (!faceFlags.HasFlag(LineDefFlags.UpperTextureIsUnpegged))
             {
                 // The bottom of the texture is aligned to the lowest ceiling
-                left = 0;
-                right = textureRepeatsX;
-                top = textureRepeatsY;
-                bottom = 0;
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = textureRepeats.y;
+                uvBounds.Bottom = 0;
             }
             else if (faceFlags.HasFlag(LineDefFlags.UpperTextureIsUnpegged))
             {
                 // The top of the texture is aligned to the highest ceiling.
-                left = 0;
-                right = textureRepeatsX;
-                top = 1;
-                bottom = top - textureRepeatsY;
+                uvBounds.Left = 0;
+                uvBounds.Right = textureRepeats.x;
+                uvBounds.Top = 1;
+                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
             }
 
-            left += xOffset;
-            right += xOffset;
-            top -= yOffset;
-            bottom -= yOffset;
 
+            uvBounds.ApplyTextureOffset(textureOffset);
 
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(left, top));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-            _CurMeshData.UVs.Add(new Vector2(right, bottom));
+            GenerateUVsForFrontFace(uvBounds);
         }
 
-        private static void GenerateUVsForDoubleSidedLineDef_MiddleTexture(LineDefFlags faceFlags, float faceWidth, float faceHeight)
+        private static void GenerateUVsForDoubleSidedLineDef_MiddleTexture(LineDefFlags faceFlags, Vector2 faceSize)
         {
-            float top = 1;
-            float bottom = 0;
-            float left = 0;
-            float right = 1;
+            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
+            Vector2 textureOffset = CalculateTextureOffset();
 
+            FaceUvBounds uvBounds = FaceUvBounds.Default;
 
-            // We multiply faceWidth by the scaleFactor to convert back to DOOM units. This is because a 1m section of wall is 64 pixels wide.
-            // Then we divide by the texture width to find out how many texture repeats will fit across the length of the wall.
-            float textureRepeatsX = (faceWidth * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.width;
-            // NOTE: Middle textures do not repeat vertically, hence why the line that calculates textureRepeatsY is missing here.
-
-            float xOffset = (float)_CurRightSideDef.X_Offset / _CurMeshData.Material.mainTexture.width;
-            float yOffset = (float)_CurRightSideDef.Y_Offset / _CurMeshData.Material.mainTexture.height;
-
-            //Debug.Log($"TextureSize: {_CurMeshData.Material.mainTexture.width}x{_CurMeshData.Material.mainTexture.height}    FaceSize: {faceWidth}x{faceHeight}    {textureRepeatsX}    {xOffset}    {yOffset}");
 
             // The top of the texture is snapped to the lowest ceiling.
-            left = 0;
-            right = textureRepeatsX;
-            top = 1;
-            bottom = 0;
+            uvBounds.Left = 0;
+            uvBounds.Right = textureRepeats.x;
+            uvBounds.Top = 1;
+            uvBounds.Bottom = 0;
 
 
-            left += xOffset;
-            right += xOffset;
-            top -= yOffset;
-            bottom -= yOffset;
+            uvBounds.ApplyTextureOffset(textureOffset);
 
+            GenerateUVsForFrontFace(uvBounds);
+        }
 
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(left, top));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
+        private static void GenerateVerticesForFrontFace(float bottomHeight, float topHeight)
+        {
+            int firstVertIndex = _CurMeshData.Vertices.Count;
 
-            _CurMeshData.UVs.Add(new Vector2(left, bottom));
-            _CurMeshData.UVs.Add(new Vector2(right, top));
-            _CurMeshData.UVs.Add(new Vector2(right, bottom));
+            // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
+            //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
+
+            // Generate vertices
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, bottomHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, topHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, topHeight, _LineDefEnd.z));
+
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, bottomHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, topHeight, _LineDefEnd.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, bottomHeight, _LineDefEnd.z));
+
+            // Generate triangles
+            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
+            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
+        }
+
+        private static void GenerateVerticesForBackFace(float bottomHeight, float topHeight)
+        {
+            int firstVertIndex = _CurMeshData.Vertices.Count;
+
+            // NOTE: We do NOT scale these vertices. Remember that the vertex gets scaled after being passed into Map.AddVertex().
+            //       The floor and ceiling heights are scaled when the SectorDef was passed into Map.AddSectorDef().
+
+            // Generate vertices
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, bottomHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, topHeight, _LineDefEnd.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, topHeight, _LineDefStart.z));
+
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefStart.x, bottomHeight, _LineDefStart.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, bottomHeight, _LineDefEnd.z));
+            _CurMeshData.Vertices.Add(new Vector3(_LineDefEnd.x, topHeight, _LineDefEnd.z));
+
+            // Generate triangles
+            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex, firstVertIndex + 1, firstVertIndex + 2 });
+            _CurMeshData.Triangles.AddRange(new int[] { firstVertIndex + 3, firstVertIndex + 4, firstVertIndex + 5 });
+        }
+
+        private static void GenerateUVsForFrontFace(FaceUvBounds uvBounds)
+        {
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Left, uvBounds.Bottom));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Left, uvBounds.Top));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Right, uvBounds.Top));
+
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Left, uvBounds.Bottom));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Right, uvBounds.Top));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Right, uvBounds.Bottom));
+        }
+
+        private static void GenerateUVsForBackFace(FaceUvBounds uvBounds)
+        {
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Right, uvBounds.Bottom));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Left, uvBounds.Top));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Right, uvBounds.Top));
+
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Right, uvBounds.Bottom));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Left, uvBounds.Bottom));
+            _CurMeshData.UVs.Add(new Vector2(uvBounds.Left, uvBounds.Top));
+        }
+
+        private static Vector2 CalculateFaceSize(float bottomHeight, float topHeight)
+        {
+            return new Vector2(Vector3.Distance(_LineDefStart, _LineDefEnd),
+                               topHeight - bottomHeight);
+        }
+
+        private static Vector2 CalculateTextureOffset()
+        {
+            return new Vector2((float) _CurFaceFrontAndBackData.FrontSideDef.X_Offset / _CurMeshData.Material.mainTexture.width,
+                               (float) _CurFaceFrontAndBackData.FrontSideDef.Y_Offset / _CurMeshData.Material.mainTexture.height);
+        }
+
+        private static Vector2 CalculateTextureRepeats(Vector2 faceSize)
+        {
+            // We multiply faceWidth by the scaleFactor to convert back to DOOM units. This is because a 1m section of wall is 64 pixels wide.
+            // Then we divide by the texture width to find out how many texture repeats will fit across the length of the wall.
+            // I had to add the call to Mathf.Ceil() to fix a bug where sometimes there was a half-pixel on the right edge of a wall section.
+            return new Vector2(Mathf.Ceil(faceSize.x * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.width,
+                               Mathf.Ceil(faceSize.y * _Map.ScaleFactor) / _CurMeshData.Material.mainTexture.height);
+        }
+
+        /// <summary>
+        /// Gets the front and back data for the current face.
+        /// </summary>
+        /// <param name="isFrontFace">Whether or not to get that data for the front or back side.</param>
+        /// <returns>The front and back data for the current face</returns>
+        private static FaceFrontAndBackData GetFaceFrontAndBackData(bool isFrontFace)
+        {
+            if (isFrontFace)
+            {
+                return new FaceFrontAndBackData()
+                {
+                    FrontSideDef = _CurRightSideDef,
+                    BackSideDef = _CurLeftSideDef,
+
+                    FrontSectorDef = _CurRightSectorDef,
+                    BackSectorDef = _CurLeftSectorDef,
+                };
+            }
+            else
+            {
+                return new FaceFrontAndBackData()
+                {
+                    FrontSideDef = _CurLeftSideDef,
+                    BackSideDef = _CurRightSideDef,
+
+                    FrontSectorDef = _CurLeftSectorDef,
+                    BackSectorDef = _CurRightSectorDef,
+                };
+
+            }
         }
 
         private static Material GetMaterial(string textureName)
