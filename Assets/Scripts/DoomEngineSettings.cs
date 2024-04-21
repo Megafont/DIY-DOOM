@@ -51,7 +51,7 @@ namespace DIY_DOOM
         [Space(10)]
 
 
-        [Header("Debug")]
+        [Header("Debug - General")]
 
         [Tooltip("Whether or not to enable the minimap.")]
         public bool EnableAutoMap = true;
@@ -59,7 +59,20 @@ namespace DIY_DOOM
         [Tooltip("Whether or not to enable the texture rendering tester.")]
         public bool EnableTextureRenderingTester = false;
 
+
+        [Header("Debug - Geometry Generation")]
+        
         [Tooltip("Whether or not to enable geometry generation.")]
         public bool EnableGeometryGeneration = true;
+
+        [Tooltip("Whether or not wall faces with lower textures on them will be generated.")]
+        public bool EnableWallGeneration_LowerTextures = true;
+        
+        [Tooltip("Whether or not wall faces with middle textures on them will be generated.")]
+        public bool EnableWallGeneration_MiddleTextures = true;
+        
+        [Tooltip("Whether or not wall faces with upper textures on them will be generated.")]
+        public bool EnableWallGeneration_UpperTextures = true;
+
     }
 }

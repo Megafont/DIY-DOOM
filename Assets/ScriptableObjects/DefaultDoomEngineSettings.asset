@@ -26,4 +26,7 @@ MonoBehaviour:
   LevelGeometryObject: {fileID: 0}
   EnableAutoMap: 1
   EnableTextureRenderingTester: 1
-  EnableGeometryGeneration: 0
+  EnableGeometryGeneration: 1
+  EnableWallGeneration_LowerTextures: 1
+  EnableWallGeneration_MiddleTextures: 1
+  EnableWallGeneration_UpperTextures: 1

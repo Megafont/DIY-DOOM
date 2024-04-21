@@ -179,26 +179,26 @@ namespace DIY_DOOM.MeshGeneration
                 GetLineDefInfo();
 
 
-                if (!_CurLineDef.Flags.HasFlag(LineDefFlags.TwoSided))
+                if (DoomEngine.Settings.EnableWallGeneration_MiddleTextures && !_CurLineDef.Flags.HasFlag(LineDefFlags.TwoSided))
                 {
                     GenerateLineDefGeometry_SingleSided(true);
                 }
                 else // This is a two-sided lineDef.
                 {       
                     // Draw the front face(s).
-                    if (TextureUtils.IsNameValid(_CurRightSideDef.LowerTextureName))
+                    if (DoomEngine.Settings.EnableWallGeneration_LowerTextures && TextureUtils.IsNameValid(_CurRightSideDef.LowerTextureName))
                         GenerateLineDefGeometry_DoubleSided_LowerTexture(true);
-                    if (TextureUtils.IsNameValid(_CurRightSideDef.UpperTextureName))
+                    if (DoomEngine.Settings.EnableWallGeneration_UpperTextures && TextureUtils.IsNameValid(_CurRightSideDef.UpperTextureName))
                         GenerateLineDefGeometry_DoubleSided_UpperTexture(true);
-                    if (TextureUtils.IsNameValid(_CurRightSideDef.MiddleTextureName))
+                    if (DoomEngine.Settings.EnableWallGeneration_MiddleTextures && TextureUtils.IsNameValid(_CurRightSideDef.MiddleTextureName))
                         GenerateLineDefGeometry_DoubleSided_MiddleTexture(true);
 
                     // Draw the back face(s).
-                    if (TextureUtils.IsNameValid(_CurLeftSideDef.LowerTextureName))
+                    if (DoomEngine.Settings.EnableWallGeneration_LowerTextures && TextureUtils.IsNameValid(_CurLeftSideDef.LowerTextureName))
                         GenerateLineDefGeometry_DoubleSided_LowerTexture(false);
-                    if (TextureUtils.IsNameValid(_CurLeftSideDef.UpperTextureName))
+                    if (DoomEngine.Settings.EnableWallGeneration_UpperTextures && TextureUtils.IsNameValid(_CurLeftSideDef.UpperTextureName))
                         GenerateLineDefGeometry_DoubleSided_UpperTexture(false);
-                    if (TextureUtils.IsNameValid(_CurLeftSideDef.MiddleTextureName))
+                    if (DoomEngine.Settings.EnableWallGeneration_MiddleTextures && TextureUtils.IsNameValid(_CurLeftSideDef.MiddleTextureName))
                         GenerateLineDefGeometry_DoubleSided_MiddleTexture(false);
                 }
 
