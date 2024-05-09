@@ -32,7 +32,6 @@ namespace DIY_DOOM.WADs
             Clear();
         }
 
-
         public bool LoadWAD(string filePath)
         {
             Clear();
@@ -156,7 +155,7 @@ namespace DIY_DOOM.WADs
 
             map.DoFinalProcessing();
 
-            ReadOtherData();
+            ReadTextureData();
 
 
             // Unload the raw wad data, since we don't need it anymore.
@@ -167,7 +166,7 @@ namespace DIY_DOOM.WADs
             return true;
         }
 
-        private bool ReadOtherData()
+        private bool ReadTextureData()
         {
             if (!ReadPaletteData())
             {
@@ -199,6 +198,12 @@ namespace DIY_DOOM.WADs
                 return false;
             }
 
+            if (!ReadFlatsData())
+            {
+                DisplayLoadDataFailedError("FLATS");
+                return false;
+            }
+            
 
             return true;
         }
@@ -636,12 +641,20 @@ namespace DIY_DOOM.WADs
         }
 
         /// <summary>
-        /// Loads a single patch.
+        /// Loads a single patch, or returns it if it is already loaded.
         /// </summary>
         /// <param name="map">The map we're loading.</param>
         /// <returns>True if sueccessfull or false otherwise.</returns>
         public bool ReadPatchData(string patchName, out Patch patch)
         {
+            // Check if this patch is already loaded.
+            if (_AssetManager.ContainsPatch(patchName))
+            {
+                patch = _AssetManager.GetRawPatchData(patchName);
+                return true;
+            }
+
+
             // This just sets the variable in case we fail to read in the specified patch and thus return earl
             patch = new Patch("DUMMY", new PatchHeader());
 
@@ -711,5 +724,95 @@ namespace DIY_DOOM.WADs
 
             return true;
         }
+
+        /// <summary>
+        /// This function reads in data for all flats (floor/ceiling textures).
+        /// </summary>
+        /// <returns>True if successful or false otherwise.</returns>
+        public bool ReadFlatsData()
+        {
+            // Find the empty lump named "F_START". This is a marker that denotes where in the WAD file
+            // the data entries for the flats begin (flats are floor/ceiling textures).
+            int flatsLumpIndex = FindLumpByName("F_START");
+
+            for (int i = flatsLumpIndex; i < _WAD_Directories.Count; i++)
+            {
+                WAD_DirectoryDef dirDef = _WAD_Directories[i];
+                
+                // If the current directory is empty, skip it. It's a marker and not a flat.
+                // NOTE: This may not be true in all WAD files, but in DOOM.WAD, the flats are the last data lumps in the file along with a few markers.
+                if (dirDef.LumpSize < 1)
+                    continue;
+
+
+                byte[] flatData = _Reader.ReadFlatData(_WAD_Data, (int)dirDef.LumpOffset);
+                if (flatData == null || flatData.Length != 4096)
+                {
+                    Debug.LogError($"Failed to read in flat data for flat \"{dirDef.LumpName}\"!");
+
+                    return false;
+                }
+
+                Flat flat = new Flat(dirDef.LumpName, flatData);
+                _AssetManager.AddRawFlatData(dirDef.LumpName, flat);
+            }
+
+            Debug.Log($"Loaded {_AssetManager.FlatCount} flats (floor/ceiling texture) data entries.");
+
+            return true;
+        }
+
+        public bool ReadFlatData(string flatName, out Flat flat)
+        {
+            flat = null;
+
+
+            // Check if this flat is already loaded.
+            if (_AssetManager.ContainsFlat(flatName))
+            {
+                flat = _AssetManager.GetRawFlatData(flatName);
+                return true;
+            }
+
+
+            // Find the empty lump named "F_START". This is a marker that denotes where in the WAD file
+            // the data entries for the flats begin (flats are floor/ceiling textures).
+            int flatsLumpIndex = FindLumpByName("F_START");
+
+            for (int i = flatsLumpIndex; i < _WAD_Directories.Count; i++)
+            {
+                WAD_DirectoryDef dirDef = _WAD_Directories[i];
+
+
+                // Is this flat the one we're looking for?
+                if (dirDef.LumpName != flatName)
+                    continue;
+
+                // If the current directory is empty, skip it. It's a marker and not a flat.
+                // NOTE: This may not be true in all WAD files, but in DOOM.WAD, the flats are the last data lumps in the file along with a few markers.
+                if (dirDef.LumpSize < 1)
+                    continue;
+
+
+                byte[] flatData = _Reader.ReadFlatData(_WAD_Data, (int)dirDef.LumpOffset);
+                if (flatData == null || flatData.Length != 4096)
+                {
+                    Debug.LogError($"Failed to read in flat data for flat \"{flatName}\"!    " + (flatData == null) + "    " + (flatData != null ? flatData.Length : 0));
+
+                    return false;
+                }
+
+
+                flat = new Flat(flatName, flatData);
+
+                _AssetManager.AddRawFlatData(flatName, flat);
+
+                return true;
+            }
+
+            return false;
+
+        }
+
     }
 }

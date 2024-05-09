@@ -3,7 +3,7 @@
 
 namespace DIY_DOOM.WADs.Data.Maps
 {
-    public struct ThingDef
+    public class ThingDef
     {
         public Vector3 Position;
         public uint Angle;

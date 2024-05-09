@@ -18,7 +18,7 @@ namespace DIY_DOOM.WADs.Data.Maps
         AlwaysShowsOnAutoMap = 256,
     }
 
-    public struct LineDef
+    public class LineDef
     {
         public uint StartVertexID;
         public uint EndVertexID;

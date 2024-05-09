@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace DIY_DOOM.WADs.Data.Maps
 {
-    public struct SideDef
+    public class SideDef
     {
         public int X_Offset;
         public int Y_Offset;

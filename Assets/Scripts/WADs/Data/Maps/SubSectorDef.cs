@@ -6,7 +6,7 @@ namespace DIY_DOOM.WADs.Data.Maps
     /// <summary>
     /// A sub sector is a convex subsection of a sector.
     /// </summary>
-    public struct SubSectorDef
+    public class SubSectorDef
     {
         public uint SegCount;
         public uint FirstSegID;

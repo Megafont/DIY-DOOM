@@ -3,7 +3,7 @@
 
 namespace DIY_DOOM.WADs.Data.Maps
 {
-    public struct NodeDef
+    public class NodeDef
     {
         // These two vectors define the line (binary space partition) that is dividing the space this node represents.
         public Vector3 PartitionStart;

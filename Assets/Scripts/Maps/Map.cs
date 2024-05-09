@@ -201,9 +201,9 @@ namespace DIY_DOOM.Maps
         /// </summary>
         /// <param name="index">The index (0-3) of the player whose spawn data is to be retreived.</param>
         /// <returns>The spawn data for the specified player.</returns>
-        public ThingDef GetPlayerSpawn(int index)
+        public ThingDef GetPlayerSpawn(uint index)
         {
-            return _PlayerSpawns[index];
+            return _PlayerSpawns[(int) index];
         }
 
         public void DoFinalProcessing()

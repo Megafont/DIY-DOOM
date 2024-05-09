@@ -21,6 +21,8 @@ namespace DIY_DOOM
         private List<string> _PatchNames;
 
         private Dictionary<string, Patch> _RawPatchDataLookup;
+        private Dictionary<string, Flat> _RawFlatDataLookup;
+
         private Dictionary<string, TextureData> _RawTextureDataLookup;
         private Dictionary<string, Texture2D> _TextureLookup;
 
@@ -52,6 +54,7 @@ namespace DIY_DOOM
             _PatchNames = new List<string>();
 
             _RawPatchDataLookup = new Dictionary<string, Patch>();
+            _RawFlatDataLookup = new Dictionary<string, Flat>();
             _RawTextureDataLookup = new Dictionary<string, TextureData>();
 
             _TextureLookup = new Dictionary<string, Texture2D>();
@@ -66,9 +69,25 @@ namespace DIY_DOOM
             _Palettes.Clear();
 
             _RawPatchDataLookup.Clear();
+            _RawFlatDataLookup.Clear();
             _RawTextureDataLookup.Clear();
 
             _TextureLookup.Clear();
+        }
+
+        public bool ContainsPatch(string patchName)
+        {
+            return _RawPatchDataLookup.ContainsKey(patchName);
+        }
+
+        public bool ContainsFlat(string flatName)
+        {
+            return _RawFlatDataLookup.ContainsKey(flatName);
+        }
+
+        public bool ContainsTexture(string textureName)
+        {
+            return _RawTextureDataLookup.ContainsKey(textureName);
         }
 
         public bool AddPalette(Palette palette)
@@ -100,45 +119,60 @@ namespace DIY_DOOM
             }
         }
 
-        public bool AddRawPatchData(string name, Patch patch)
+        public bool AddRawPatchData(string patchName, Patch patch)
         {
             try
             {                
-                _RawPatchDataLookup.Add(name, patch);
+                _RawPatchDataLookup.Add(patchName, patch);
                 return true;
             }
             catch (Exception e)
             {
-                Debug.LogError($"AssetManager failed to add raw patch data for patch \"{name}\" due to this error: \"{e.Message}\"");
+                Debug.LogError($"AssetManager failed to add raw patch data for patch \"{patchName}\" due to this error: \"{e.Message}\"");
                 return false;
             }
 
         }
 
-        public bool AddRawTextureData(string name, TextureData textureData)
+        public bool AddRawFlatData(string flatName, Flat flat)
         {
             try
-            {                
-                _RawTextureDataLookup.Add(name, textureData);
+            {
+                _RawFlatDataLookup.Add(flatName, flat);
                 return true;
             }
             catch (Exception e)
             {
-                Debug.LogError($"AssetManager failed to add raw texture data for texture \"{name}\" due to this error: \"{e.Message}\"");
+                Debug.LogError($"AssetManager failed to add raw flat data for flat \"{flatName}\" due to this error: \"{e.Message}\"");
+                return false;
+            }
+
+        }
+
+        public bool AddRawTextureData(string textureName, TextureData textureData)
+        {
+            try
+            {                
+                _RawTextureDataLookup.Add(textureName, textureData);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"AssetManager failed to add raw texture data for texture \"{textureName}\" due to this error: \"{e.Message}\"");
                 return false;
             }
         }
 
-        public bool AddTexture(string name, Texture2D texture)
+        public bool AddTexture(string textureName, Texture2D texture)
         {
             try
             {
-                _TextureLookup.Add(name, texture);
+                _TextureLookup.Add(textureName, texture);
                 return true;
             }
             catch (Exception e)
             {
-                Debug.LogError($"AssetManager failed to add texture \"{name}\" due to this error: \"{e.Message}\"");
+                Debug.LogError($"AssetManager failed to add texture \"{textureName}\" due to this error: \"{e.Message}\"");
                 return false;
             }
 
@@ -172,7 +206,8 @@ namespace DIY_DOOM
                 }
 
                 // No raw patch data was found with the specified name, so try to load one. If this works, add it to the raw patches lookup, generate the texture, add it to the textures list, and return.
-                else if (_WAD_Loader.ReadPatchData(textureName, out Patch loadedPatch))
+                else if (_PatchNames.Contains(textureName) &&
+                         _WAD_Loader.ReadPatchData(textureName, out Patch loadedPatch))
                 {
                     // NOTE: We don't add loadedPatch to _RawPatchDataLookup here, as the ReadPatchData() function already did that.
 
@@ -182,10 +217,25 @@ namespace DIY_DOOM
                     return _TextureLookup[textureLookupName];
                 }
 
+                // Now patch was found with the specified name, so try to load a flat with that name.
+                else if (_WAD_Loader.ReadFlatData(textureName, out Flat loadedFlat))
+                {
+                    // NOTE: We don't add loadedFlat to _RawFlatDataLookup here, as the ReadFlatData() function already did that.
+
+                    _TextureLookup.Add(textureLookupName,
+                                       loadedFlat.RenderToTexture2D(_Palettes[paletteIndex]));
+
+                    return _TextureLookup[textureLookupName];
+                }
+
+                // We failed to find the requested texture.
+                else
+                {
+                    Debug.LogError($"Could not locate the requested texture, patch, or flat: \"{textureName}\"");
+                }
             }
 
 
-            Debug.Log($"AssetManager failed to get texture \"{textureLookupName}\"!");
             return null;
         }
 
@@ -199,14 +249,19 @@ namespace DIY_DOOM
             return _PatchNames[index];
         }
 
-        public Patch GetRawPatchData(string name)
+        public Patch GetRawPatchData(string patchName)
         {
-            return _RawPatchDataLookup[name];
+            return _RawPatchDataLookup[patchName];
         }
 
-        public TextureData GetRawTextureData(string name)
+        public Flat GetRawFlatData(string flatName)
         {
-            return _RawTextureDataLookup[name];
+            return _RawFlatDataLookup[flatName];
+        }
+
+        public TextureData GetRawTextureData(string textureName)
+        {
+            return _RawTextureDataLookup[textureName];
         }
 
         private string BuildPatchLookupName(string patchName, int paletteIndex)
@@ -226,6 +281,7 @@ namespace DIY_DOOM
 
 
 
+        public int FlatCount { get { return _RawFlatDataLookup.Count; } }
         public int PaletteCount { get { return _Palettes.Count; } } 
         public int PatchCount { get { return _TextureLookup.Values.Count; } }
         public int PatchNamesCount { get { return _PatchNames.Count; } }

@@ -6,7 +6,7 @@ namespace DIY_DOOM.WADs.Data.Maps
     /// <summary>
     /// A seg is a segment of a LineDef, or sometimes an entire lineDef.
     /// </summary>
-    public struct SegDef
+    public class SegDef
     {
         public uint StartVertexID;
         public uint EndVertexID;

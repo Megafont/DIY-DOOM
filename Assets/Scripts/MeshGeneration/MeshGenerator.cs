@@ -173,6 +173,7 @@ namespace DIY_DOOM.MeshGeneration
             InitMeshGeneration(map);
 
 
+            // Generate the geometry for the walls (all vertical surfaces)
             for (uint i = 0; i < map.LineDefsCount; i++)
             {
                 _CurLineDef = map.GetLineDef(i);
@@ -205,7 +206,75 @@ namespace DIY_DOOM.MeshGeneration
             } // end for i
 
 
+            // Generate geometry for the floors
+            //GenerateFloorsGeometry();
+
             return CreateOutputObject();            
+        }
+
+        private static void GenerateFloorsGeometry()
+        {
+            List<Vector3> vertices = new List<Vector3>();
+            List<uint> vertexIndices = new List<uint>();
+            List<string> textureNames = new List<string>();
+
+
+            // Generate the geometry for the floors
+            for (int i = 0; i < _Map.SubSectorsCount; i++)
+            {
+                SubSectorDef subSectorDef = _Map.GetSubSectorDef((uint) i);
+
+                for (int j = 0; j < subSectorDef.SegCount; j++)
+                {
+                    SegDef segDef = _Map.GetSegDef((uint)j);
+                    Vector3 vertex = _Map.GetVertex(segDef.StartVertexID);
+
+
+                    vertexIndices.Add(segDef.StartVertexID);
+                    vertices.Add(vertex);
+                    LineDef lineDef = _Map.GetLineDef(segDef.LineDefID);
+                    SideDef sideDef = _Map.GetSideDef((uint) lineDef.RightSideDefIndex);
+                    SectorDef sectorDef = _Map.GetSectorDef((uint) sideDef.SectorIndex);
+                    textureNames.Add(sectorDef.FloorTextureName);
+
+                } // end for j
+
+
+            } // end for i
+
+            Debug.Log("Vertices: " + vertices.Count);
+
+
+            int c = 0;
+
+            // Triangulation will form (n - 2) triangles, so 3 * (n - 2) vertex indicies are needed.
+            for (int j = 0, k = 1; j < vertices.Count; j += 3, k++)
+            {
+                if (vertices.Count - j < 3)
+                    break;
+
+                if (!TextureUtils.IsNameValid(textureNames[j]))
+                {
+                    Debug.LogError($"Texture name \"{textureNames[j]}\" is not valid!");
+                    break;
+                }
+
+                Debug.Log("TEXTURE: " + textureNames[j]);
+                GetMeshData(textureNames[j]);
+
+                _CurMeshData.Triangles.Add((int) vertexIndices[0]);
+                _CurMeshData.Triangles.Add((int) vertexIndices[k]);
+                _CurMeshData.Triangles.Add((int) vertexIndices[k + 1]);
+
+                _CurMeshData.UVs.Add(vertices[(int) vertexIndices[0]]);
+                _CurMeshData.UVs.Add(vertices[(int) vertexIndices[k]]);
+                _CurMeshData.UVs.Add(vertices[(int) vertexIndices[k + 1]]);
+
+                c++;
+                if (c >= 5)
+                    return;
+            }
+
         }
 
         private static void GetLineDefInfo()
@@ -213,13 +282,28 @@ namespace DIY_DOOM.MeshGeneration
             _LineDefStart = _Map.GetVertex(_CurLineDef.StartVertexID);
             _LineDefEnd = _Map.GetVertex(_CurLineDef.EndVertexID);
 
-            if (_CurLineDef.LeftSideDefIndex >= 0)
-                _CurLeftSideDef = _Map.GetSideDef((uint) _CurLineDef.LeftSideDefIndex);
-            if (_CurLineDef.RightSideDefIndex >= 0)
-                _CurRightSideDef = _Map.GetSideDef((uint) _CurLineDef.RightSideDefIndex);
 
-            _CurLeftSectorDef = _Map.GetSectorDef((uint) _CurLeftSideDef.SectorIndex);
-            _CurRightSectorDef = _Map.GetSectorDef((uint) _CurRightSideDef.SectorIndex);            
+            if (_CurLineDef.LeftSideDefIndex >= 0)
+            {
+                _CurLeftSideDef = _Map.GetSideDef((uint)_CurLineDef.LeftSideDefIndex);
+                _CurLeftSectorDef = _Map.GetSectorDef((uint)_CurLeftSideDef.SectorIndex);
+            }
+            else
+            {
+                _CurLeftSideDef = null;
+                _CurLeftSectorDef = null;
+            }
+            
+            if (_CurLineDef.RightSideDefIndex >= 0)
+            {
+                _CurRightSideDef = _Map.GetSideDef((uint)_CurLineDef.RightSideDefIndex);
+                _CurRightSectorDef = _Map.GetSectorDef((uint)_CurRightSideDef.SectorIndex);
+            }
+            else
+            {
+                _CurRightSideDef = null;
+                _CurRightSectorDef = null;
+            }
         }
 
         private static void GenerateLineDefGeometry_SingleSided(bool isFrontFace)
@@ -707,7 +791,6 @@ namespace DIY_DOOM.MeshGeneration
         {
             Material newMaterial;
 
-
             Texture2D texture = AssetManager.Instance.GetTexture(textureName, 0);
             if (texture != null)
             {
@@ -729,7 +812,8 @@ namespace DIY_DOOM.MeshGeneration
         /// <summary>
         /// Checks if the specified texture name is already associated with a subMesh or not.
         /// If so, it is retrieved and stored in _CurMeshData.
-        /// If not, then a new MeshData object is created for the specified texture name.
+        /// If not, then a new MeshData object is created for the specified texture name,
+        /// and stored in _CurMeshData.
         /// </summary>
         /// <param name="textureName"></param>
         /// <returns>True if the texture name already has a MeshData object associated with it, false if not.</returns>
@@ -738,6 +822,7 @@ namespace DIY_DOOM.MeshGeneration
             if (_SubMeshLookup.TryGetValue(textureName, out _CurMeshData))
                 return true;
 
+            Debug.Log("ZZZ");
            
             _CurMeshData = new MeshData(textureName, GetMaterial(textureName));
             _SubMeshLookup.Add(textureName, _CurMeshData);

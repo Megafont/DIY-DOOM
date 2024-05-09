@@ -45,6 +45,15 @@ namespace DIY_DOOM.WADs
             return bytes8;
         }
 
+        public byte[] ReadBytes(byte[] wadData, int offset, int numBytesToRead)
+        {
+            byte[] bytes8 = new byte[numBytesToRead];
+
+            Array.Copy(wadData, offset, bytes8, 0, numBytesToRead);
+
+            return bytes8;
+        }
+
         public string Read8ByteString(byte[] wadData, int offset)
         {
             // The trim on the end is needed, as unused characters at the end of the lump name are all set to the null character. We need to remove those unnecessary chars from the end of the string.
@@ -166,8 +175,8 @@ namespace DIY_DOOM.WADs
             sector.FloorHeight = BitConverter.ToInt16(Read2Bytes(wadData, offset));
             sector.CeilingHeight = BitConverter.ToInt16(Read2Bytes(wadData, offset + 2));
             
-            sector.FloorTexture = Read8ByteString(wadData, offset + 4);
-            sector.CeilingTexture = Read8ByteString(wadData, offset + 12);
+            sector.FloorTextureName = Read8ByteString(wadData, offset + 4);
+            sector.CeilingTextureName = Read8ByteString(wadData, offset + 12);
 
             sector.LightLevel = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 20));
             sector.Type = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 22));
@@ -359,6 +368,20 @@ namespace DIY_DOOM.WADs
             texturePatch.ColorMap = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
 
             return texturePatch;
+        }
+
+        public byte[] ReadFlatData(byte[] wadData, int offset)
+        {                     
+            try
+            {
+                return ReadBytes(wadData, offset, 4096);
+
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
         }
     }
 }

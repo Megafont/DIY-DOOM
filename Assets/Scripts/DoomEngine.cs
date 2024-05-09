@@ -114,6 +114,7 @@ namespace DIY_DOOM
             TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("BROWN144", 0));
             TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("LITE3", 0));
             TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("BRNBIGC", 0));
+            TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("FLOOR0_1", 0));
 
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("WALL00_6", 0);
