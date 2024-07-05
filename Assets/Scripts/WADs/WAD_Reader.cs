@@ -9,7 +9,8 @@ using DIY_DOOM.Maps;
 using DIY_DOOM.WADs.Data;
 using DIY_DOOM.WADs.Data.Maps;
 using DIY_DOOM.WADs.Data.Textures;
-using System.Runtime.InteropServices.WindowsRuntime;
+using DIY_DOOM.Utils.Maps;
+
 
 namespace DIY_DOOM.WADs
 {
@@ -111,8 +112,8 @@ namespace DIY_DOOM.WADs
             lineDef.LineType = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 6));
             lineDef.SectorTag = BitConverter.ToUInt16(Read2Bytes(wadData, offset + 8));
             
-            lineDef.RightSideDefIndex = BitConverter.ToInt16(Read2Bytes(wadData, offset + 10));
-            lineDef.LeftSideDefIndex = BitConverter.ToInt16(Read2Bytes(wadData, offset + 12));
+            lineDef.FrontSideDefIndex = BitConverter.ToInt16(Read2Bytes(wadData, offset + 10));
+            lineDef.BackSideDefIndex = BitConverter.ToInt16(Read2Bytes(wadData, offset + 12));
 
             return lineDef;
         }

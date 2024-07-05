@@ -6,6 +6,7 @@ using UnityEngine;
 
 using DIY_DOOM.Maps;
 using DIY_DOOM.AutoMap;
+using DIY_DOOM.Utils.Maps;
 using DIY_DOOM.WADs.Data.Maps;
 
 using Random = UnityEngine.Random;
@@ -92,8 +93,8 @@ public class BSP_Traverser_B : MonoBehaviour
 
     private void RenderSubSector(uint subSectorID)
     {
-        _AutoMapRenderer.DrawSubSector_Original(_Map.GetSubSectorDef(subSectorID),
-                                                new Color32((byte) Random.Range(0, 256), (byte) Random.Range(0, 256), (byte) Random.Range(0, 256), 255));
+        //_AutoMapRenderer.DrawSubSector_Original(_Map.GetSubSectorDef(subSectorID),
+        //                                        new Color32((byte) Random.Range(0, 256), (byte) Random.Range(0, 256), (byte) Random.Range(0, 256), 255));
     }
 
     /// <summary>
@@ -107,9 +108,9 @@ public class BSP_Traverser_B : MonoBehaviour
     {
         NodeDef node = _Map.GetNodeDef(nodeID);
 
-        Vector3 pointToPartition = MapUtils.Point3dToFlattened3D(point - node.PartitionStart);
+        Vector3 pointToPartition = MapUtils.Point3dToFlattened3d(point - node.PartitionStart);
 
-        Vector3 spacePartitionLine = MapUtils.Point3dToFlattened3D(node.DeltaToPartitionEnd);
+        Vector3 spacePartitionLine = MapUtils.Point3dToFlattened3d(node.DeltaToPartitionEnd);
 
 
       

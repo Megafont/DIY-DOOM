@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using DIY_DOOM.Maps;
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEngine;
 
 
 namespace DIY_DOOM.WADs.Data.Maps
@@ -14,6 +17,27 @@ namespace DIY_DOOM.WADs.Data.Maps
         public int LightLevel;
         public int Type;
         public int Tag;
+
+        /// <summary>
+        /// This list holds references to all segs linked to front SideDefs that reference this sector.
+        /// This list can be thought of as defining the exterior outline of the sector.
+        /// </summary>
+        public List<SegDef> FrontSegs = new List<SegDef>();
+
+        /// <summary>
+        /// This list holds references to all segs linked to back SideDefs that reference this sector.
+        /// </summary>
+        public List<SegDef> BackSegs = new List<SegDef>();
+
+        /// <summary>
+        /// This list holds a list of segs for each hole that exists within this sector (aka another sector)
+        /// </summary>
+        public List<List<LineDef>> Holes = new List<List<LineDef>>();
+
+        /// <summary>
+        /// This list holds the outline of the sector.
+        /// </summary>
+        public List<Vector2> SectorOutline = new List<Vector2>();
 
 
 

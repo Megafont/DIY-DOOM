@@ -1,99 +1,21 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 using UnityEngine;
 
 using DIY_DOOM.Maps;
+using DIY_DOOM.MeshGeneration.Triangulation;
 using DIY_DOOM.WADs.Data.Maps;
+using DIY_DOOM.Utils.Maps;
 using DIY_DOOM.Utils.Textures;
 
 
 namespace DIY_DOOM.MeshGeneration
 {
-    public struct MeshGenOutput
-    {
-        public List<Mesh> MapSubMeshes;
-        public List<Material> MapSubMeshMaterials;
-    }
-
-
-    public struct MeshData
-    {
-        public List<Vector3> Vertices;
-        public List<int> Triangles;
-        public List<Vector2> UVs;
-
-        public Material Material;
-
-        public string TextureName;
-
-
-
-        public MeshData(string textureName, Material material)
-        {
-            Vertices = new List<Vector3>();
-            Triangles = new List<int>();
-            UVs = new List<Vector2>();
-
-            Material = material;
-            TextureName = textureName;
-        }
-
-
-        public void ClearGeometry()
-        {
-            Vertices.Clear();
-            Triangles.Clear();
-            UVs.Clear();
-        }
-    }
-    
-
-    public struct FaceUvBounds
-    {
-        public float Bottom;
-        public float Left;
-        public float Top;
-        public float Right;
-
-
-
-        public static FaceUvBounds Default
-        {
-            get
-            {
-                return new FaceUvBounds() { Bottom = 0, Left = 0, Top = 1, Right = 1 };
-            }
-        }
-
-        public void ApplyTextureOffset(Vector2 textureOffset)
-        {
-            Left += textureOffset.x;
-            Right += textureOffset.x;
-
-            Top -= textureOffset.y;
-            Bottom -= textureOffset.y;
-        }
-
-        public override string ToString()
-        {
-            return $"({Left},{Bottom})-({Right}, {Top})";
-        }
-    }
-
-    public struct FaceFrontAndBackData
-    {
-        public SideDef FrontSideDef;
-        public SideDef BackSideDef;
-
-        public SectorDef FrontSectorDef;
-        public SectorDef BackSectorDef;
-    }
-
-
 
     // ********************************************************************************************************************************************************************************************************
-    // *  I could implement lighting by creating different versions of the textures for different light levels similarly to how I did it for palettes already.
+    // *  TODO: I could implement lighting by creating different versions of the textures for different light levels similarly to how I did it for palettes already.
     // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     // *  An improvement to that code would be to get rid of adding a number to the end of the string, and instead just add a couple bytes on the end.
     // *  The first added byte is the palette index, and the 2nd added byte is the light level.
@@ -207,74 +129,233 @@ namespace DIY_DOOM.MeshGeneration
 
 
             // Generate geometry for the floors
-            //GenerateFloorsGeometry();
+            GenerateFloorsGeometry();
+            
+            /*
+            Material mat = _SubMeshLookup.ContainsKey("FLOOR0_1") ? _SubMeshLookup["FLOOR0_1"].Material : CreateMaterial("FLOOR0_1");
+            MeshData meshData = new MeshData("Triangulator Test", mat);
+            Triangulator_Polygon.Triangulate(TestPolygons.Star_Clockwise.ToList(), meshData);
+            _SubMeshLookup.Add(meshData.TextureName, meshData);
+            */
 
             return CreateOutputObject();            
         }
 
         private static void GenerateFloorsGeometry()
         {
-            List<Vector3> vertices = new List<Vector3>();
+            for (int i = 0; i < _Map.SubSectorsCount; i++)
+            {
+                if (i > 1)
+                    break;
+
+                // Get the next sector definition
+                SectorDef sectorDef = _Map.GetSectorDef((uint) i);
+
+                if (sectorDef.SectorOutline.Count < 3)
+                {
+                    Debug.LogWarning($"Sector[{i}] outline has less than 3 vertices! Skipping it.");
+                    continue;
+                }
+
+                // Get the appropriate MeshData objects to add the floor/ceiling geometry of this sector to.
+                GetMeshData(sectorDef.CeilingTextureName, out MeshData ceilingMeshData);
+                GetMeshData(sectorDef.FloorTextureName, out MeshData floorMeshData);
+
+                // Triangulate it to create the floor geometry.
+                if (Triangulator_Polygon.Triangulate(sectorDef.SectorOutline, floorMeshData, sectorDef.FloorHeight, false))
+                {
+
+                }
+                else
+                {
+                    Debug.LogError($"Failed to triangulate the floor geometry of sector[{i}]!");
+                }
+
+            } // end for i
+        }
+
+        private static void GenerateFloorsGeometry_OLD()
+        {
             List<uint> vertexIndices = new List<uint>();
-            List<string> textureNames = new List<string>();
+            List<SectorDef> sectorDefs = new List<SectorDef>();
 
 
             // Generate the geometry for the floors
             for (int i = 0; i < _Map.SubSectorsCount; i++)
             {
+                vertexIndices.Clear();
+                sectorDefs.Clear();
+
                 SubSectorDef subSectorDef = _Map.GetSubSectorDef((uint) i);
 
-                for (int j = 0; j < subSectorDef.SegCount; j++)
+                if (subSectorDef.SegCount < 3)
+                    continue;
+
+
+                int firstSegIndex = (int) subSectorDef.FirstSegID;
+                int lastSegIndex = firstSegIndex + (int) subSectorDef.SegCount - 1;
+                for (int j = firstSegIndex; j <= lastSegIndex; j++)
                 {
-                    SegDef segDef = _Map.GetSegDef((uint)j);
-                    Vector3 vertex = _Map.GetVertex(segDef.StartVertexID);
+                    SegDef segDef = _Map.GetSegDef((uint) j);
+
+                    LineDef lineDef = _Map.GetLineDef(segDef.LineDefID);
+
+                    int sideDefIndex = -1;
+
+                    // If this lineDef is two-sided, and we are on the back side
+                    if (lineDef.Flags.HasFlag(LineDefFlags.TwoSided) && segDef.Direction == 1)
+                        sideDefIndex = lineDef.BackSideDefIndex;
+                    else
+                        sideDefIndex = lineDef.FrontSideDefIndex;
 
 
                     vertexIndices.Add(segDef.StartVertexID);
-                    vertices.Add(vertex);
-                    LineDef lineDef = _Map.GetLineDef(segDef.LineDefID);
-                    SideDef sideDef = _Map.GetSideDef((uint) lineDef.RightSideDefIndex);
-                    SectorDef sectorDef = _Map.GetSectorDef((uint) sideDef.SectorIndex);
-                    textureNames.Add(sectorDef.FloorTextureName);
+
+
+                    SideDef sideDef = _Map.GetSideDef((uint) sideDefIndex);
+                    SectorDef sectorDef = _Map.GetSectorDef(sideDef.SectorIndex);
+                    sectorDefs.Add(sectorDef);
 
                 } // end for j
 
+                RemoveInvalidVertices(vertexIndices);
+
+                Debug.Log("Vertices: " + vertexIndices.Count);
+                for (int p = 0; p < vertexIndices.Count; p++)
+                {
+                    Debug.Log($"[{p}]: {_Map.GetVertex(vertexIndices[p])}");
+                }
+                    
+
+
+                //Debug.Log("TEXTURE: " + sectorDefs[0].FloorTextureName);
+
+
+                GetMeshData(sectorDefs[0].FloorTextureName, out _CurMeshData);
+                int startIndex = _CurMeshData.Vertices.Count;
+
+
+                // Triangulation will form (n - 2) triangles, so 3 * (n - 2) vertex indicies are needed.
+                int baseIndex = startIndex;
+                for (int j = 0, k = 1; j < vertexIndices.Count - 2; j++, k++)
+                {
+                    baseIndex = _CurMeshData.Vertices.Count;
+
+                    // TODO: Remove this commented out code and others in this function.
+                    //if (vertexIndices.Count - j < 3)
+                    //    break;
+
+                    if (!TextureUtils.IsNameValid(sectorDefs[j].FloorTextureName))
+                    {
+                        Debug.LogError($"Texture name \"{sectorDefs[j].FloorTextureName}\" is not valid!");
+                        break;
+                    }
+
+
+                    _CurMeshData.Vertices.Add(GetFlatVertex(vertexIndices[0], sectorDefs[0].FloorHeight));
+                    _CurMeshData.Vertices.Add(GetFlatVertex(vertexIndices[k], sectorDefs[k].FloorHeight));
+                    _CurMeshData.Vertices.Add(GetFlatVertex(vertexIndices[k + 1], sectorDefs[k + 1].FloorHeight));
+
+                    _CurMeshData.Triangles.Add(baseIndex);
+                    _CurMeshData.Triangles.Add(baseIndex + 1);
+                    _CurMeshData.Triangles.Add(baseIndex + 2);
+
+                    // We just use the vertex coords as UVs here, as this should work correctly for floors/ceilings.
+                    _CurMeshData.UVs.Add(TransformFlatPointToUV(_CurMeshData.Vertices[baseIndex]));
+                    _CurMeshData.UVs.Add(TransformFlatPointToUV(_CurMeshData.Vertices[baseIndex + 1]));
+                    _CurMeshData.UVs.Add(TransformFlatPointToUV(_CurMeshData.Vertices[baseIndex + 2]));
+
+                    //if (sectorDefs[j].FloorTextureName == "NUKAGE3")
+                    //{
+                        Debug.Log($"index: {baseIndex}    i: {i}    j: {j}    k: {k}    tex: {sectorDefs[j].FloorTextureName}    newVertices: {vertexIndices.Count}");
+                        Debug.Log($"UV[{baseIndex}] = {_CurMeshData.UVs[baseIndex]}");
+                        Debug.Log($"UV[{baseIndex + 1}] = {_CurMeshData.UVs[baseIndex + 1]}");
+                        Debug.Log($"UV[{baseIndex + 2}] = {_CurMeshData.UVs[baseIndex + 2]}");
+                    //}
+
+
+                    baseIndex += 3;
+
+                    
+                } // end for j, k
+
+                if (i >= 1)
+                    break;
 
             } // end for i
 
-            Debug.Log("Vertices: " + vertices.Count);
 
+        }
 
-            int c = 0;
+        private static void RemoveInvalidVertices(List<uint> vertexIndices)
+        {
+            List<int> invalidIndices = new List<int>();
 
-            // Triangulation will form (n - 2) triangles, so 3 * (n - 2) vertex indicies are needed.
-            for (int j = 0, k = 1; j < vertices.Count; j += 3, k++)
+            for (int i = 0; i < vertexIndices.Count; i += 3)
             {
-                if (vertices.Count - j < 3)
+                if (vertexIndices.Count - i < 3)
                     break;
 
-                if (!TextureUtils.IsNameValid(textureNames[j]))
+                Vector3 v1 = _Map.GetVertex(vertexIndices[i]);
+                Vector3 v2 = _Map.GetVertex(vertexIndices[i + 1]);
+                Vector3 v3 = _Map.GetVertex(vertexIndices[i + 2]);
+
+                // Check if all three are at the same x position.
+                if (v1.x == v2.x && v2.x == v3.x)
                 {
-                    Debug.LogError($"Texture name \"{textureNames[j]}\" is not valid!");
-                    break;
+                    int max = (int) Mathf.Max(Mathf.Max(v1.z, v2.z), v3.z);                    
+                    int min = (int) Mathf.Min(Mathf.Min(v1.z, v2.z), v3.z);
+
+                    Debug.Log($"MIN: {min}    MAX: {max}    V1: {v1}    V2: {v2}    V3: {v3}");
+
+                    if (v1.z > min && v1.z < max)
+                    {
+                        invalidIndices.Add(i);
+                    }
+                    else if (v2.z > min && v2.z < max)
+                    {
+                        invalidIndices.Add(i + 1);
+                    }
+                    else if (v3.z > min && v3.z < max)
+                    {
+                        invalidIndices.Add(i + 2);
+                    }
                 }
+            } // end for i
 
-                Debug.Log("TEXTURE: " + textureNames[j]);
-                GetMeshData(textureNames[j]);
-
-                _CurMeshData.Triangles.Add((int) vertexIndices[0]);
-                _CurMeshData.Triangles.Add((int) vertexIndices[k]);
-                _CurMeshData.Triangles.Add((int) vertexIndices[k + 1]);
-
-                _CurMeshData.UVs.Add(vertices[(int) vertexIndices[0]]);
-                _CurMeshData.UVs.Add(vertices[(int) vertexIndices[k]]);
-                _CurMeshData.UVs.Add(vertices[(int) vertexIndices[k + 1]]);
-
-                c++;
-                if (c >= 5)
-                    return;
+            // Remove the invalid indices in reverse order so we don't mess up the loop iteration as we go
+            Debug.Log("INVALID: " + invalidIndices.Count);
+            for (int i = invalidIndices.Count - 1; i >= 0; i--)
+            {
+                vertexIndices.RemoveAt(invalidIndices[i]);
             }
+        }
 
+        private static Vector3 GetFlatVertex(uint vertexIndex, float height)
+        {
+            Vector3 vertex = _Map.GetVertex(vertexIndex);
+
+            vertex.y = height;
+
+            return vertex;
+        }
+
+        /// <summary>
+        /// Transforms the coordinates of a vertex of a flat (floor / ceiling texture).
+        /// This function is used to generate UV coordinates from the floor/ceiling vertices.
+        /// </summary>
+        /// <param name="v">The vertex to transform.</param>
+        /// <returns>The transformed vertex.</returns>
+        public static Vector2 TransformFlatPointToUV(Vector3 v)
+        {
+            // Convert to a 2D point with the x and z coords from the 3d point.
+            Vector2 v2D = MapUtils.Point3dTo2d(v);
+
+            // Adjust scale. This is off by half due to the size of these textures (64x64) compared to other textures (128x128).
+            v2D /= 2f;
+
+            // Translate a bit so the floor/ceiling texture is aligned the same as it is in the original game.
+            return v2D + new Vector2(0.75f, 0f);
         }
 
         private static void GetLineDefInfo()
@@ -283,9 +364,9 @@ namespace DIY_DOOM.MeshGeneration
             _LineDefEnd = _Map.GetVertex(_CurLineDef.EndVertexID);
 
 
-            if (_CurLineDef.LeftSideDefIndex >= 0)
+            if (_CurLineDef.BackSideDefIndex >= 0)
             {
-                _CurLeftSideDef = _Map.GetSideDef((uint)_CurLineDef.LeftSideDefIndex);
+                _CurLeftSideDef = _Map.GetSideDef((uint)_CurLineDef.BackSideDefIndex);
                 _CurLeftSectorDef = _Map.GetSectorDef((uint)_CurLeftSideDef.SectorIndex);
             }
             else
@@ -294,9 +375,9 @@ namespace DIY_DOOM.MeshGeneration
                 _CurLeftSectorDef = null;
             }
             
-            if (_CurLineDef.RightSideDefIndex >= 0)
+            if (_CurLineDef.FrontSideDefIndex >= 0)
             {
-                _CurRightSideDef = _Map.GetSideDef((uint)_CurLineDef.RightSideDefIndex);
+                _CurRightSideDef = _Map.GetSideDef((uint)_CurLineDef.FrontSideDefIndex);
                 _CurRightSectorDef = _Map.GetSectorDef((uint)_CurRightSideDef.SectorIndex);
             }
             else
@@ -315,7 +396,7 @@ namespace DIY_DOOM.MeshGeneration
 
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.MiddleTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.MiddleTextureName, out _CurMeshData);
 
             Vector2 faceSize = CalculateFaceSize(floorHeight, ceilingHeight);
             FaceUvBounds uvBounds = CalculateUvBoundsFor_SingleSidedLineDef_LowerTexture(_CurLineDef.Flags, faceSize);
@@ -342,7 +423,7 @@ namespace DIY_DOOM.MeshGeneration
 
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.LowerTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.LowerTextureName, out _CurMeshData);
 
             Vector2 faceSize = CalculateFaceSize(lowestFloor, highestFloor);
             FaceUvBounds uvBounds = CalculateUvBoundsFor_DoubleSidedLineDef_LowerTexture(_CurLineDef.Flags, faceSize);
@@ -369,7 +450,7 @@ namespace DIY_DOOM.MeshGeneration
 
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.UpperTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.UpperTextureName, out _CurMeshData);
 
             Vector2 faceSize = CalculateFaceSize(lowestCeiling, highestCeiling);
             FaceUvBounds uvBounds = CalculateUvBoundsFor_DoubleSidedLineDef_UpperTexture(_CurLineDef.Flags, faceSize);
@@ -396,7 +477,7 @@ namespace DIY_DOOM.MeshGeneration
             float highestCeiling = Mathf.Max(_CurFaceFrontAndBackData.BackSectorDef.CeilingHeight, _CurFaceFrontAndBackData.FrontSectorDef.CeilingHeight);
 
             // Get the appropriate MeshData object, and store it in _CurMeshData.
-            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.MiddleTextureName);
+            GetMeshData(_CurFaceFrontAndBackData.FrontSideDef.MiddleTextureName, out _CurMeshData);
 
             Vector2 faceSize = CalculateFaceSize(highestFloor, lowestCeiling);
             FaceUvBounds uvBounds = CalculateUvBoundsFor_DoubleSidedLineDef_MiddleTexture(_CurLineDef.Flags, faceSize, highestCeiling - lowestCeiling);
@@ -464,7 +545,8 @@ namespace DIY_DOOM.MeshGeneration
             else // Lower Texture Is Unpegged))
             {
                 // This is using the left sector's floor height on purpose, as we need to compare the floor height on the back side of this wall to the ceiling height of the sector directly in front of this wall.
-                float heightFromFloorToCeiling = (_CurRightSectorDef.CeilingHeight - _CurLeftSectorDef.FloorHeight) * _Map.ScaleFactor;
+                //float heightFromFloorToCeiling = (_CurRightSectorDef.CeilingHeight - _CurLeftSectorDef.FloorHeight) * _Map.ScaleFactor;
+                float heightFromFloorToCeiling = _CurRightSectorDef.CeilingHeight - _CurLeftSectorDef.FloorHeight;
                 float textureRepeatsFromCeilingToFloor = heightFromFloorToCeiling / _CurMeshData.Material.mainTexture.height;
 
                 // The top of the texture is snapped to the ceiling.
@@ -540,134 +622,9 @@ namespace DIY_DOOM.MeshGeneration
                 uvBounds.Bottom = 0;
             }
 
-            /*
-                // The top of the texture is snapped to the lowest ceiling.
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = 1;
-                uvBounds.Bottom = 0;
-            */
-
-
             uvBounds.ApplyTextureOffset(textureOffset);
 
             return uvBounds;
-        }
-
-        private static void GenerateUVsForSingleSidedLineDef(LineDefFlags faceFlags, Vector2 faceSize)
-        {
-            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
-            Vector2 textureOffset = CalculateTextureOffset();
-
-            FaceUvBounds uvBounds = FaceUvBounds.Default;
-
-
-            if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
-            {
-                // The top of the texture is snapped to the ceiling.
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = 1;
-                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
-            }
-            else
-            {
-                // The bottom of the texture is snapped to the floor.
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = textureRepeats.y;
-                uvBounds.Bottom = 0;
-            }
-
-
-            uvBounds.ApplyTextureOffset(textureOffset);
-
-            GenerateUVsForFrontFace(uvBounds);
-        }
-
-        private static void GenerateUVsForDoubleSidedLineDef_LowerTexture(LineDefFlags faceFlags, Vector2 faceSize)
-        {
-            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
-            Vector2 textureOffset = CalculateTextureOffset();
-
-            FaceUvBounds uvBounds = FaceUvBounds.Default;
-
-
-            if (!faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
-            {
-                // The bottom of the texture is snapped to the lower floor.
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = 1;
-                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
-            }
-            else if (faceFlags.HasFlag(LineDefFlags.LowerTextureIsUnpegged))
-            {
-                // This is using the left sector's floor height on purpose, as we need to compare the floor height on the back side of this wall to the ceiling height of the sector directly in front of this wall.
-                float heightFromFloorToCeiling = (_CurRightSectorDef.CeilingHeight - _CurLeftSectorDef.FloorHeight) * _Map.ScaleFactor;
-                float textureRepeatsFromCeilingToFloor = heightFromFloorToCeiling / _CurMeshData.Material.mainTexture.height;
-
-                // The top of the texture is snapped to the ceiling.
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = 1 - textureRepeatsFromCeilingToFloor;
-                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
-            }
-
-            uvBounds.ApplyTextureOffset(textureOffset);
-
-            GenerateUVsForFrontFace(uvBounds);
-        }
-
-        private static void GenerateUVsForDoubleSidedLineDef_UpperTexture(LineDefFlags faceFlags, Vector2 faceSize)
-        {
-            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
-            Vector2 textureOffset = CalculateTextureOffset();
-
-            FaceUvBounds uvBounds = FaceUvBounds.Default;
-
-
-            if (!faceFlags.HasFlag(LineDefFlags.UpperTextureIsUnpegged))
-            {
-                // The bottom of the texture is aligned to the lowest ceiling
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = textureRepeats.y;
-                uvBounds.Bottom = 0;
-            }
-            else if (faceFlags.HasFlag(LineDefFlags.UpperTextureIsUnpegged))
-            {
-                // The top of the texture is aligned to the highest ceiling.
-                uvBounds.Left = 0;
-                uvBounds.Right = textureRepeats.x;
-                uvBounds.Top = 1;
-                uvBounds.Bottom = uvBounds.Top - textureRepeats.y;
-            }
-
-
-            uvBounds.ApplyTextureOffset(textureOffset);
-
-            GenerateUVsForFrontFace(uvBounds);
-        }
-
-        private static void GenerateUVsForDoubleSidedLineDef_MiddleTexture(LineDefFlags faceFlags, Vector2 faceSize)
-        {
-            Vector2 textureRepeats = CalculateTextureRepeats(faceSize);
-            Vector2 textureOffset = CalculateTextureOffset();
-
-            FaceUvBounds uvBounds = FaceUvBounds.Default;
-
-
-            // The top of the texture is snapped to the lowest ceiling.
-            uvBounds.Left = 0;
-            uvBounds.Right = textureRepeats.x;
-            uvBounds.Top = 1;
-            uvBounds.Bottom = 0;
-
-
-            uvBounds.ApplyTextureOffset(textureOffset);
-
-            GenerateUVsForFrontFace(uvBounds);
         }
 
         private static void GenerateVerticesForFrontFace(float bottomHeight, float topHeight)
@@ -787,7 +744,7 @@ namespace DIY_DOOM.MeshGeneration
             }
         }
 
-        private static Material GetMaterial(string textureName)
+        private static Material CreateMaterial(string textureName)
         {
             Material newMaterial;
 
@@ -815,17 +772,18 @@ namespace DIY_DOOM.MeshGeneration
         /// If not, then a new MeshData object is created for the specified texture name,
         /// and stored in _CurMeshData.
         /// </summary>
-        /// <param name="textureName"></param>
+        /// <param name="textureName">The name of the texture to find the mesh for.</param>
+        /// <param name="meshData">This out parameter returns the MeshData object for the specified texture.</param>
         /// <returns>True if the texture name already has a MeshData object associated with it, false if not.</returns>
-        private static bool GetMeshData(string textureName)
+        private static bool GetMeshData(string textureName, out MeshData meshData)
         {
-            if (_SubMeshLookup.TryGetValue(textureName, out _CurMeshData))
+            if (_SubMeshLookup.TryGetValue(textureName, out meshData))
                 return true;
 
             Debug.Log("ZZZ");
            
-            _CurMeshData = new MeshData(textureName, GetMaterial(textureName));
-            _SubMeshLookup.Add(textureName, _CurMeshData);
+            meshData = new MeshData(textureName, CreateMaterial(textureName));
+            _SubMeshLookup.Add(textureName, meshData);
 
             return false;
         }
@@ -841,6 +799,9 @@ namespace DIY_DOOM.MeshGeneration
             {
                 Mesh mesh = new Mesh();
 
+                Debug.Log($"Tex: \"{pair.Value.Material.name}\"    Verts: {pair.Value.Vertices.Count}    Tris: {pair.Value.Triangles.Count / 3}    UVs: {pair.Value.UVs.Count}");
+
+                mesh.name = $"Mesh ({pair.Value.Material.name})";
                 mesh.vertices = pair.Value.Vertices.ToArray();
                 mesh.triangles = pair.Value.Triangles.ToArray();
                 mesh.uv = pair.Value.UVs.ToArray();

@@ -21,6 +21,10 @@ namespace DIY_DOOM
 
         [Header("Mesh Generation")]
 
+        [Tooltip("This controls the size of the map. Note that the scaling uses division rather than multiplication. The default value is 32, which makes the map 32x smaller than it would be if we pretend one DOOM unit is equal to one Unity unit. This constant comes from DOOM wiki (https://doom.fandom.com/wiki/Map_unit). The guy that made the repo linked in the readme file in the root folder of this project is using a scale factor of 15.")]
+        [Range(0.001f, 1000f)]
+        public float MapScaleFactor = 32;
+
         [Tooltip("This is the prefab used to instantiate empty mesh objects.")]
         public LevelSubMesh LevelMeshPrefab;
 

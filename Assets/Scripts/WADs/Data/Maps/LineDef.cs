@@ -26,8 +26,8 @@ namespace DIY_DOOM.WADs.Data.Maps
         public uint LineType;
         public uint SectorTag;
 
-        public int LeftSideDefIndex;
-        public int RightSideDefIndex;
+        public int BackSideDefIndex;  // aka LeftSideDefIndex (relative to the direction the side def is going in)
+        public int FrontSideDefIndex; // aka RightSideDefIndex (relative to the direction the side def is going in)
 
 
         public void DEBUG_Print()
@@ -39,8 +39,8 @@ namespace DIY_DOOM.WADs.Data.Maps
             Debug.Log($"Flags: {Flags}");
             Debug.Log($"Line Type: {LineType}");
             Debug.Log($"Sector Tag: {SectorTag}");
-            Debug.Log($"Right Side Def: {RightSideDefIndex}");
-            Debug.Log($"Left Side Def: {LeftSideDefIndex}");
+            Debug.Log($"Right Side Def: {FrontSideDefIndex}");
+            Debug.Log($"Left Side Def: {BackSideDefIndex}");
             Debug.Log(new string('-', 256));
         }
     }

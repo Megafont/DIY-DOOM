@@ -6,6 +6,7 @@ using UnityEngine;
 
 using DIY_DOOM.Maps;
 using DIY_DOOM.AutoMap;
+using DIY_DOOM.Utils.Maps;
 using DIY_DOOM.WADs.Data.Maps;
 
 
@@ -100,9 +101,9 @@ public class BSP_Traverser_A : MonoBehaviour
     {
         NodeDef node = _Map.GetNodeDef(nodeID);
 
-        Vector3 pointToPartition = MapUtils.Point3dToFlattened3D(point - node.PartitionStart);
+        Vector3 pointToPartition = MapUtils.Point3dToFlattened3d(point - node.PartitionStart);
 
-        Vector3 spacePartitionLine = MapUtils.Point3dToFlattened3D(node.DeltaToPartitionEnd);
+        Vector3 spacePartitionLine = MapUtils.Point3dToFlattened3d(node.DeltaToPartitionEnd);
 
 
       

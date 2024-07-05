@@ -10,7 +10,8 @@ using DIY_DOOM.WADs;
 using DIY_DOOM.WADs.Data;
 using DIY_DOOM.WADs.Data.Maps;
 using DIY_DOOM.WADs.Data.Textures;
-using JetBrains.Annotations;
+using DIY_DOOM.Utils.Maps;
+
 
 namespace DIY_DOOM.WADs
 {
@@ -95,13 +96,13 @@ namespace DIY_DOOM.WADs
             return true;
         }
 
-        public bool LoadMapData(string mapName, out Map map)
+        public bool LoadMapData(string mapName, float scaleFactor, out Map map)
         {
             if (_AssetManager == null)
                 _AssetManager = AssetManager.Instance;
 
 
-            map = new Map(mapName);
+            map = new Map(mapName, scaleFactor);
 
 
             if (!ReadMapVertices(map))
@@ -511,12 +512,38 @@ namespace DIY_DOOM.WADs
 
             int segSizeInBytes = 12;
             int segsCount = (int) (_WAD_Directories[mapIndex].LumpSize / segSizeInBytes);
-
+            
             SegDef seg;
             for (int i = 0; i < segsCount; i++)
             {
+                // Read in the data of this segment definition.
                 seg = _Reader.ReadSegData(_WAD_Data, (int) (_WAD_Directories[mapIndex].LumpOffset + i * segSizeInBytes));
 
+                /*
+                 * TODO: Remove this code if unneeded
+                // Calculate the vector that represents this seg's lineDef.
+                Vector3 startVertex = map.GetVertex(seg.StartVertexID);
+                Vector3 endVertex = map.GetVertex(seg.EndVertexID);
+                Vector3 lineDef = endVertex - startVertex;
+
+                // TODO: Remove this Seg start point calculation code if unneeded, and the extra properties I added to SegDef.
+                Debug.Log($"NEW LEN[{i}]: {lineDef.magnitude} - {MapUtils.ScaleSingleValue(seg.Offset, map.ScaleFactor)} = {lineDef.magnitude - MapUtils.ScaleSingleValue(seg.Offset, map.ScaleFactor)}");
+                // Use the offset to calculate the length of the final vector.
+                float newSegLength = lineDef.magnitude - MapUtils.ScaleSingleValue(seg.Offset, map.ScaleFactor);
+                newSegLength = newSegLength >= 0 ? newSegLength : -newSegLength;
+
+                // Calculate what percentage the new length is of the old length.
+                float percent = 1f - (newSegLength / lineDef.magnitude);
+                //percent = percent >= 0 ? percent : -percent;
+                seg.PercentStartShifted = percent;
+
+                Debug.Log($"{newSegLength} / {lineDef.magnitude}    {seg.Offset}    {map.ScaleFactor}    {percent * 100}%");
+
+                // Finally, calculate the starting point of the seg.
+                seg.StartPoint = Vector3.Lerp(startVertex, endVertex, percent);
+                */
+
+                // Add the seg to the map.
                 map.AddSegDef(seg);
 
                 //seg.DEBUG_Print();

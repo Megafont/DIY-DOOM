@@ -6,6 +6,7 @@ using UnityEngine;
 
 using DIY_DOOM.Maps;
 using DIY_DOOM.WADs.Data.Maps;
+using DIY_DOOM.Utils.Maps;
 
 
 namespace DIY_DOOM.AutoMap
@@ -91,9 +92,16 @@ namespace DIY_DOOM.AutoMap
             _Map = map;
 
             ClearAll();
-
+            
             DrawWalls(color, yOffset);
             DrawPlayer();
+
+            for (int i = 0; i < 3; i++)
+            {
+                Color sectorColor = new Color32((byte)UnityEngine.Random.Range(0, 256), (byte)UnityEngine.Random.Range(0, 256), (byte)UnityEngine.Random.Range(0, 256), 255);
+                DrawSector(_Map.GetSectorDef((uint) i), sectorColor, yOffset + 1 + (i * LINE_DEPTH_INCREMENT));
+            }
+
             //DrawBinaryspacePartition(_Map.GetNodeDef(_Map.NodesCount - 1));
         }
 
@@ -152,11 +160,46 @@ namespace DIY_DOOM.AutoMap
         }
 
         /// <summary>
+        /// This function draws a sector's outline.
+        /// </summary>
+        /// <param name="sector">The sector whose outline is to be drawn.</param>
+        /// <param name="color">The color of the outline.</param>
+        /// <param name="yOffset">The y-position of the outline.</param>
+        public void DrawSector(SectorDef sector, Color color, float yOffset = 0f)
+        {
+            if (sector.SectorOutline == null || sector.SectorOutline.Count < 3)
+            {
+                Debug.LogWarning($"Sector outline cannot be drawn, as it is null or has less than 3 vertices!");
+                return;
+            }
+
+            for (int i = 0; i < sector.SectorOutline.Count - 1; i++)
+            {
+                DrawLine(MapUtils.Point2dTo3dXZ(sector.SectorOutline[i]),
+                         MapUtils.Point2dTo3dXZ(sector.SectorOutline[i + 1]),
+                         color,
+                         yOffset);
+            }
+
+
+            // Draw one last segment to connect the start and end points.
+            DrawLine(MapUtils.Point2dTo3dXZ(sector.SectorOutline[0]),
+                     MapUtils.Point2dTo3dXZ(sector.SectorOutline[sector.SectorOutline.Count - 1]),
+                     color,
+                     yOffset);
+        }
+
+
+        /* The below functions are commented out as they were my attempts to get it to draw subsector outlines.
+         * However, this isn't needed anyway, and it may not be possible.
+         * 
+         
+        /// <summary>
         /// This function draws a subSector's outline.
         /// </summary>
         /// <param name="subSector">The subsector whose outline is to be drawn.</param>
-        /// <param name="color"></param>
-        /// <param name="yOffset"></param>
+        /// <param name="color">The color of the outline.</param>
+        /// <param name="yOffset">The y-position of the outline.</param>
         public void DrawSubSector_Original(SubSectorDef subSector, Color color, float yOffset = 0f)
         {
             List<Vector3> vertices = new List<Vector3>();
@@ -178,12 +221,6 @@ namespace DIY_DOOM.AutoMap
             }
             
         }
-
-
-        // *****************************************************************
-        // REMOVE DRAWLINE RETURNING A LINE RENDERER!!!
-        // *****************************************************************
-
 
         /// <summary>
         /// This function draws a subSector's outline.
@@ -238,8 +275,8 @@ namespace DIY_DOOM.AutoMap
             }
 
             return vertsSorted;
-        }
-
+        }        
+        
         private void AddVertexPair(List<Vector3>list, Vector3 first, Vector3 second)
         {
             list.Add(first);
@@ -269,6 +306,7 @@ namespace DIY_DOOM.AutoMap
             return indexOfNearest;
         }
 
+        */
 
 
         // PRIMITVE DRAWING FUNCTIONS
@@ -295,6 +333,10 @@ namespace DIY_DOOM.AutoMap
             _PlayerObject.transform.position = _Map.GetPlayerSpawn(0).Position;
             _PlayerObject.SetActive(true);
         }
+
+        // *****************************************************************
+        // TODO: REMOVE DRAWLINE RETURNING A LINE RENDERER!!!
+        // *****************************************************************
 
         public LineRenderer DrawLine(Vector3 start, Vector3 end, Color color, float yOffset = 0f)
         {

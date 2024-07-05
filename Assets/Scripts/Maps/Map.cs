@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using UnityEngine;
 
+using DIY_DOOM.Utils.Maps;
 using DIY_DOOM.WADs.Data.Maps;
 
 
@@ -40,7 +41,7 @@ namespace DIY_DOOM.Maps
         
 
 
-        public Map(string name, bool scaleAndAjustVertices = true, bool centerMapOnOrigin = true)
+        public Map(string name, float scaleFactor, bool scaleAndAjustVertices = true, bool centerMapOnOrigin = true)
         {
             _PlayerSpawns = new ThingDef[4];
 
@@ -62,7 +63,7 @@ namespace DIY_DOOM.Maps
 
             // This constant comes from DOOM wiki: https://doom.fandom.com/wiki/Map_unit
             // The guy that made the repo linked in the readme file in the root folder of this project using 15f.   
-            _ScaleFactor = 32f; // 15f;
+            _ScaleFactor = scaleFactor;
         }
 
         public void AddVertexDef(Vector3 vertex)
@@ -117,8 +118,12 @@ namespace DIY_DOOM.Maps
 
         public void AddSectorDef(SectorDef sector)
         {
-            sector.FloorHeight = MapUtils.ScaleSingleValue(sector.FloorHeight, _ScaleFactor);
-            sector.CeilingHeight = MapUtils.ScaleSingleValue(sector.CeilingHeight, _ScaleFactor);
+            if (_ScaleAndAjustVertices)
+            {
+                sector.FloorHeight = MapUtils.ScaleSingleValue(sector.FloorHeight, _ScaleFactor);
+                sector.CeilingHeight = MapUtils.ScaleSingleValue(sector.CeilingHeight, _ScaleFactor);
+            }
+
 
             _SectorDefs.Add(sector);
         }
@@ -130,6 +135,9 @@ namespace DIY_DOOM.Maps
 
         public void AddSegDef(SegDef seg)
         {
+            if (_ScaleAndAjustVertices)
+                seg.Offset = MapUtils.ScaleSingleValue(seg.Offset, _ScaleFactor);
+
             _SegDefs.Add(seg);
         }   
 
@@ -211,10 +219,108 @@ namespace DIY_DOOM.Maps
             if (_CenterMapOnOrigin)
                 CenterMapOnOrigin();
 
+            GetSectorSegs();
+            DetermineSectorOutlines();
+
             _IsFullyLoaded = true;
         }
 
-        public void CenterMapOnOrigin()
+        private void GetSectorSegs()
+        {
+            /*
+            for (int i = 0; i < _SubSectorDefs.Count; i++)
+            {
+                SubSectorDef subSector = _SubSectorDefs[i];
+                int firstSegID = (int) subSector.FirstSegID;
+
+                SectorDef parentSector = subSector.ParentSector;
+
+
+                for (int j = 0; j < subSector.SegCount; j++)
+                {
+                    SegDef seg = _SegDefs[firstSegID + j];
+                    LineDef lineDef = _LineDefs[(int)seg.LineDefID];
+
+                    int frontSideIndex = lineDef.FrontSideDefIndex;
+                    int backSideIndex = lineDef.BackSideDefIndex;
+
+                    SideDef frontSide = frontSideIndex >= 0 ? _SideDefs[frontSideIndex] : null;
+                    SideDef backSide = backSideIndex >= 0 ? _SideDefs[backSideIndex] : null;
+
+                    if (frontSide != null)
+                    {
+                        _SectorDefs[(int)frontSide.SectorIndex].FrontSegs.Add(lineDef);
+                    }
+
+                    if (backSide != null)
+                    {
+                        _SectorDefs[(int)backSide.SectorIndex].BackSegs.Add(lineDef);
+                    }
+
+                } // end for j
+
+            } // end for i
+            */
+
+            /*
+            for (int i = 0; i < _LineDefs.Count; i++)
+            {
+                LineDef lineDef = _LineDefs[i];
+
+                int frontSideIndex = lineDef.FrontSideDefIndex;
+                int backSideIndex = lineDef.BackSideDefIndex;
+
+                SideDef frontSide = frontSideIndex >= 0 ? _SideDefs[frontSideIndex] : null;
+                SideDef backSide = backSideIndex >= 0 ? _SideDefs[backSideIndex] : null;
+
+                if (frontSide != null)
+                {
+                    _SectorDefs[(int)frontSide.SectorIndex].FrontSegs.Add(lineDef);
+                }
+
+                if (backSide != null)
+                {
+                    _SectorDefs[(int)backSide.SectorIndex].BackSegs.Add(lineDef);
+                }
+
+            } // end for i
+            */
+
+            for (int i = 0; i < _SegDefs.Count; i++)
+            {
+                SegDef seg = _SegDefs[i];
+
+                int frontSideIndex = _LineDefs[(int) seg.LineDefID].FrontSideDefIndex;
+                int backSideIndex = _LineDefs[(int) seg.LineDefID].BackSideDefIndex;
+
+                SideDef frontSide = frontSideIndex >= 0 ? _SideDefs[frontSideIndex] : null;
+                SideDef backSide = backSideIndex >= 0 ? _SideDefs[backSideIndex] : null;
+                
+                if (frontSide != null)
+                {
+                    seg.ID = i;
+                    _SectorDefs[(int)frontSide.SectorIndex].FrontSegs.Add(seg);
+                }
+
+                if (backSide != null)
+                {
+                    seg.ID = i;
+                    _SectorDefs[(int)backSide.SectorIndex].BackSegs.Add(seg);
+                }
+
+            } // end for i
+        }
+
+        private void DetermineSectorOutlines()
+        {
+            // TODO: Make Map.DetermineSectorOutlines() process all sectors.
+            for (int i = 0; i < 3 /*_SectorDefs.Count*/; i++)
+            {
+                SectorOutlineGenerator.DetermineOutline(this, i);
+            }
+        }
+
+        private void CenterMapOnOrigin()
         {
             _MapSize = _MaxExtents - _MinExtents;
 

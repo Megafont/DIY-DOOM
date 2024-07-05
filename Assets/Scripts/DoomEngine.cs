@@ -69,7 +69,7 @@ namespace DIY_DOOM
         protected virtual bool Init()
         {
             bool loadedWAD = _WAD_Loader.LoadWAD(Application.persistentDataPath + "/" + _Settings.WAD_Path);
-            bool loadedMapData = _WAD_Loader.LoadMapData(_Settings.MapToLoad, out Map map);
+            bool loadedMapData = _WAD_Loader.LoadMapData(_Settings.MapToLoad, _Settings.MapScaleFactor, out Map map);
 
 
             if (_Settings.EnableAutoMap)
@@ -115,6 +115,7 @@ namespace DIY_DOOM
             TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("LITE3", 0));
             TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("BRNBIGC", 0));
             TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("FLOOR0_1", 0));
+            TextureRenderingTester.CreateTextureRenderingTestDisplay(_AssetManager.GetTexture("NUKAGE3", 0));
 
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("PISGA0", 0);
             //_Settings.TextureTestObject_1.material.mainTexture = _AssetManager.GetTexture("WALL00_6", 0);

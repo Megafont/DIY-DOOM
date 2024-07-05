@@ -12,8 +12,13 @@ namespace DIY_DOOM.WADs.Data.Maps
         public uint EndVertexID;
         public int Angle;
         public uint LineDefID;
-        public uint Direction; // Facing direction: 0 = same as lineDef, and 1 = opposite of lineDef
-        public uint Offset; // Distance from start of lineDef to start of this seg
+        public uint Direction; // Facing direction: 0 = same as lineDef (runs along the lineDef's front side), and 1 = opposite of lineDef (runs along the lineDef's back side)
+        public uint Offset; // Distance along the lineDef to the start of this seg
+
+        // TODO: Remove these fields once I get the floor/ceiling geometry working!
+        public Vector3 StartPoint; // The start point calculated by using the Offset field.
+        public float PercentStartShifted;
+        public int ID;
 
 
         public void DEBUG_Print()
