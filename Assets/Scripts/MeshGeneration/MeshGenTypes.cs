@@ -44,6 +44,13 @@ namespace DIY_DOOM.MeshGeneration
             Triangles.Clear();
             UVs.Clear();
         }
+
+        public void Add(MeshData meshData)
+        {
+            Vertices.AddRange(meshData.Vertices);
+            Triangles.AddRange(meshData.Triangles);
+            UVs.AddRange(meshData.UVs);
+        }
     }
 
 

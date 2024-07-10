@@ -1,9 +1,14 @@
 ﻿using DIY_DOOM.Maps;
 using DIY_DOOM.WADs.Data.Maps;
+
 using System.Collections.Generic;
-using Unity.VisualScripting;
+
 using UnityEngine;
 
+using DIY_DOOM.MeshGeneration.Triangulation;
+using static UnityEditor.Searcher.SearcherWindow.Alignment;
+using DIY_DOOM.MeshGeneration.Triangulation.Base;
+using static DIY_DOOM.Utils.Maps.SectorOutlineGenerator;
 
 
 namespace DIY_DOOM.Utils.Maps
@@ -25,11 +30,15 @@ namespace DIY_DOOM.Utils.Maps
         private static int _SectorIndex;
         private static SectorDef _SectorDef;
 
+        /// <summary>
+        /// This dictionary holds the outline data for each hole that exists within this sector (aka another sector)
+        /// </summary>
+        private static Dictionary<int, HoleData> Holes = new Dictionary<int, HoleData>();
 
         /// <summary>
-        /// This list holds a list of segs for each hole that exists within this sector (aka another sector)
+        /// This list contains the holes sorted based on the length of their shortest connector line segment (shortest to longest).
         /// </summary>
-        private static List<List<Vector2>> Holes = new List<List<Vector2>>();
+        private static List<HoleData> _SortedHolesList = new List<HoleData>();
 
         /// <summary>
         /// This list holds the outline of the sector.
@@ -62,6 +71,10 @@ namespace DIY_DOOM.Utils.Maps
             FindAllOutlines();
 
             Debug.Log($"Outlines: {Holes.Count}");
+            for (int i = 1; i <= Holes.Count; i++)
+            {
+                Debug.Log("ID: " + Holes[i].ID);
+            }
 
             if (Holes.Count < 1)
             {
@@ -71,18 +84,33 @@ namespace DIY_DOOM.Utils.Maps
 
 
             // Find the largest outline. This one is the exterior walls of the sector.
-            int index = FindLargestOutline();
-            if (index < 0)
+            int idOfLargest = FindLargestOutline();
+            if (idOfLargest <= 0)
             {
                 Debug.LogError("Failed to find the largest outline for this sector!");
                 return;
             }
 
-            Debug.Log($"Largest: {index}    {Holes[index].Count}");
+            Debug.Log($"Largest: {idOfLargest}    {Holes[idOfLargest].Vertices.Count}");
 
             // Copy the largest outline into SectorOutline, and remove it from the holes list.
-            _SectorDef.SectorOutline = Holes[index];
-            Holes.RemoveAt(index);
+            SectorOutline.Clear();
+            SectorOutline.AddRange(Holes[idOfLargest].Vertices);
+            Holes.Remove(idOfLargest);
+
+            // Incorporate holes into the outline so they will be included in the triangulation of the sector.
+            int originalVerts = SectorOutline.Count;
+            bool result;
+            if (Holes.Count > 0)
+            {
+                Debug.LogError("INCORPORATING!");
+                result = IncorporateHoles();
+            }
+
+            // Fill in the SectorOutline field in the SectorDef object.
+            _SectorDef.SectorOutline.AddRange(SectorOutline);
+
+            Debug.Log($"OrigVerts: {originalVerts}    NewVerts: {_SectorDef.SectorOutline.Count}");
         }
 
         private static int AddRangeWithoutDuplicates(List<SegDef> list, List<SegDef> rangeToAdd)
@@ -127,7 +155,7 @@ namespace DIY_DOOM.Utils.Maps
             float discarded = 0;
 
             List<SegDef> allSectorSegs = new List<SegDef>();
-            // TODO: Figure out why discarding bad triangles doesn't seem to be working quite right.
+            // TODO: Remove the commented out lines below.
             discarded += AddRangeWithoutDuplicates(allSectorSegs, _SectorDef.FrontSegs);
             discarded += AddRangeWithoutDuplicates(allSectorSegs, _SectorDef.BackSegs);
             //allSectorSegs.AddRange(_SectorDef.FrontSegs);
@@ -164,9 +192,11 @@ namespace DIY_DOOM.Utils.Maps
                 lastSegEndPoint = _Map.GetVertex(allSectorSegs[0].EndVertexID);
                 allSectorSegs.RemoveAt(0);
 
-                Holes.Add(new List<Vector2>());
-                Holes[holeIndex].Add(MapUtils.Point3dTo2d(firstSegStartPoint));
-                Holes[holeIndex].Add(MapUtils.Point3dTo2d(lastSegEndPoint));
+                HoleData newHoleData = new HoleData();
+                newHoleData.Vertices = new List<Vector2>();
+                newHoleData.ID = holeIndex + 1;
+                newHoleData.Vertices.Add(MapUtils.Point3dTo2d(firstSegStartPoint));
+                newHoleData.Vertices.Add(MapUtils.Point3dTo2d(lastSegEndPoint));
 
 
                 bool curOutlineIsDone = false;
@@ -174,7 +204,7 @@ namespace DIY_DOOM.Utils.Maps
                 while (!curOutlineIsDone)
                 {
                     curOutlineIsDone = false;
-                    int nextIndex = FindNextSeg(allSectorSegs, holeIndex, firstSegStartPoint, ref lastSegEndPoint);
+                    int nextIndex = FindNextSeg(allSectorSegs, newHoleData, firstSegStartPoint, ref lastSegEndPoint);
 
                     // Did we find the next segment in this outline?
                     if (nextIndex >= 0)
@@ -199,17 +229,34 @@ namespace DIY_DOOM.Utils.Maps
                     }
                 } // end while (!curOutlineIsDone)
 
+
                 // If the current loop is less than three segments long, then it is invalid so discard it.
-                if (Holes[holeIndex].Count < 3)
+                if (newHoleData.Vertices.Count >= 3)
                 {
-                    Holes.RemoveAt(holeIndex);
+                    // This outline is finished, so add it into the Holes list, and then gather some basic information about it.
+                    Holes.Add(newHoleData.ID, newHoleData);
+                    Triangulator_Polygon.GatherPolygonData(newHoleData.Vertices, out newHoleData.PolygonDetails);
+
+                    // If this outline is not clockwise, then reverse it so it is.
+                    if (!newHoleData.PolygonDetails.IsClockwise)
+                    {
+                        newHoleData.Vertices.Reverse();
+                        newHoleData.PolygonDetails = new PolygonDetails(newHoleData.PolygonDetails.IsConvex,
+                                                                        false,
+                                                                        newHoleData.PolygonDetails.LeftTurns,
+                                                                        newHoleData.PolygonDetails.RightTurns,
+                                                                        newHoleData.PolygonDetails.ColinearSections);
+                    }
+                }
+                else
+                {
                     holeIndex--;
 
                     consecutiveFailedHoleOutlineAttempts++;
                     invalidOutlines++;
                 }
 
-                if (allSectorSegs.Count <= 0)
+                if (allSectorSegs.Count < 3)
                     break;
 
 
@@ -221,8 +268,7 @@ namespace DIY_DOOM.Utils.Maps
             } // end while
 
 
-            Debug.Log($"Invalid Outlines Removed: {invalidOutlines}");
-
+            Debug.Log($"Holes Found: {Holes.Count}    Invalid Outlines Removed: {invalidOutlines}");
         }
 
         /// <summary>
@@ -230,22 +276,25 @@ namespace DIY_DOOM.Utils.Maps
         /// </summary>
         private static int FindLargestOutline()
         {
+            List<int> holeIDs = new List<int>();
             List<Vector2> minExtents = new List<Vector2>();
             List<Vector2> maxExtents = new List<Vector2>();
 
 
             // Iterate through all the outlines
-            for (int i = 0; i < Holes.Count; i++)
+            foreach (KeyValuePair<int, HoleData> pair in Holes)
             {
                 Vector2 curMin = new Vector2(float.MaxValue, float.MaxValue);
                 Vector2 curMax = new Vector2(float.MinValue, float.MinValue);
-                
-                Debug.Log($"HOLE[{i}]");
+
+                HoleData curHoleData = pair.Value;
+
+                Debug.Log($"HOLE[{curHoleData.ID}]");
 
                 // Iterate through all of the vertices of this outline
-                for (int j = 0; j < Holes[i].Count; j++)
+                for (int j = 0; j < Holes[curHoleData.ID].Vertices.Count; j++)
                 {
-                    Vector2 vert = Holes[i][j];
+                    Vector2 vert = Holes[curHoleData.ID].Vertices[j];
 
                     Debug.Log($"    VERT[{j}]: {vert}");
 
@@ -264,6 +313,7 @@ namespace DIY_DOOM.Utils.Maps
                 } // end for j
 
 
+                holeIDs.Add(curHoleData.ID);
                 minExtents.Add(curMin);
                 maxExtents.Add(curMax);
 
@@ -298,12 +348,18 @@ namespace DIY_DOOM.Utils.Maps
 
             } // end for k
 
-            Debug.Log($"IndexOfLargestArea:    {indexOfLargest}");
 
-            return indexOfLargest;
+            int largestHoleID = -1;
+            if (indexOfLargest >= 0)
+            {
+                largestHoleID = holeIDs[indexOfLargest];
+                Debug.Log($"IndexOfLargestArea:    {indexOfLargest}    ID: {largestHoleID}");
+            }
+
+            return largestHoleID;
         }
 
-        private static int FindNextSeg(List<SegDef> segs, int holeIndex, Vector3 firstSegStartPoint, ref Vector3 lastSegEndPoint)
+        private static int FindNextSeg(List<SegDef> segs, HoleData holeData, Vector3 firstSegStartPoint, ref Vector3 lastSegEndPoint)
         {
             for (int i = 0; i < segs.Count; i++)
             {
@@ -352,7 +408,7 @@ namespace DIY_DOOM.Utils.Maps
                     // In that case we don't add this point, since it is the same as the starting point.
                     if (vertToAdd != firstSegStartPoint)
                     {
-                        Holes[holeIndex].Add(MapUtils.Point3dTo2d(vertToAdd));
+                        holeData.Vertices.Add(MapUtils.Point3dTo2d(vertToAdd));
                     }
 
 
@@ -373,5 +429,285 @@ namespace DIY_DOOM.Utils.Maps
             return -1;
         }
 
+
+
+        // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        // Functions for Incorporating Holes Into the Sector Outline
+        // --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        // NOTE: The functions in this section are based on this algorithm for dealing with a polygon that has holes in it:
+        //       https://alienryderflex.com/triangulation/
+
+        /// <summary>
+        /// This function iterates through all of the holes in the sector and incorporates them into the sector outline.
+        /// This way the holes will be included when the sector is triangulated.
+        /// </summary>
+        /// <returns>True if successful.</returns>
+        private static bool IncorporateHoles()
+        {
+            List<int> finishedHolesIDs = new List<int>();
+
+            // Clear the sorted holes list, and then add each hole into it.
+            _SortedHolesList.Clear();
+            foreach (KeyValuePair<int, HoleData> pair in Holes)
+            {
+                _SortedHolesList.Add(pair.Value);
+            }
+
+
+            // Incorporate the hole outlines into the sector's outline one by one.
+            while(true)
+            {
+                // First, we need to find out the closest vertex in each remaining hole to one of the sector outline's vertices.
+                // This data will determine the order we incorporate the holes into the sector outline.
+                // This will allow us to incorporate the holes into the sector outline without having problems where a previous
+                // hole's connector is cutting through another hole that hasn't been incorporated yet.
+                SortHolesByShortestConnectors(finishedHolesIDs);
+
+                // Connect the remaining hole with the shortest connector into the sector's outline.
+                AddHoleToSectorOutline(_SortedHolesList[0], finishedHolesIDs);
+                _SortedHolesList.RemoveAt(0);
+
+                // If all holes have been incorporated into the sector's outline, then break out of this loop.
+                if (finishedHolesIDs.Count >= Holes.Count)
+                    break;
+
+            } // end for i
+
+
+            return true;
+        }
+
+        /// <summary>
+        /// Adds the first hole in the sorted list (the one with the shortest connector line segment) into the sector's outline.
+        /// </summary>
+        /// <returns>True if successful.</returns>
+        private static bool AddHoleToSectorOutline(HoleData holeData, List<int> finishedHolesIDs)
+        {
+            // Get the closest connector data for this hole.
+            ClosestConnectorData closestConnectorData = holeData.ClosestConnectorData;
+
+            // Copy the hole's vertex list so we can invert it quick since we need it to be counterclockwise.
+            List<Vector2> holeVerts = new List<Vector2>(holeData.Vertices);
+
+            // Duplicate the first vertex at the end so that we connect the last vert to the first vert, before
+            // then connecting back out to the sector outline.
+            holeVerts.Add(holeVerts[0]);
+
+            // Reverse the order of the hole vertices, so we go counterclockwise was we add its vertices into the sector's outline.
+            holeVerts.Reverse();
+
+
+            // Duplicate the vertex we are connecting to in the sector outline.
+            int insertionIndex = closestConnectorData.SectorOutlinePointIndex;
+            SectorOutline.Insert(closestConnectorData.SectorOutlinePointIndex, SectorOutline[closestConnectorData.SectorOutlinePointIndex]);
+
+            // Insert the reversed hole vertices just after the two duplicated vertices we just made.
+            insertionIndex++;
+            SectorOutline.InsertRange(insertionIndex, holeVerts);
+
+
+            // Add this hole's ID to the list of finished holes IDs.
+            finishedHolesIDs.Add(holeData.ID);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Finds the closest line segment we can use to connect each hole to the outline.         
+        /// </summary>
+        private static bool SortHolesByShortestConnectors(List<int> finishedHolesIDs)
+        {
+            ResetAllEntriesInSortedList();
+
+
+            // Iterate through each hole in the sector, and find the vertex that is closest to a vertex in the sector's outline.
+            foreach (KeyValuePair<int, HoleData> pair in Holes)
+            {
+                HoleData curHoleData = pair.Value;
+
+
+                // Skip this hole if it has already been incorporated into the sector's outline.
+                if (finishedHolesIDs.Contains(curHoleData.ID)) 
+                { 
+                    continue;
+                }
+
+
+                // Find the shortest line segment we can use to connect this hole to the sector's outline.
+                if (FindClosestConnector(curHoleData))
+                {
+                    // Insert this hole into the proper spot in the list based on the length of its shortest connector line segment.
+                    for (int i = 0; i < _SortedHolesList.Count - 1; i++)
+                    {
+                        if (curHoleData.ClosestConnectorData.Length < _SortedHolesList[i].ClosestConnectorData.Length)
+                        {
+                            _SortedHolesList.Insert(i, curHoleData);
+                            break;
+                        }
+                    }
+                }
+
+
+            } // end for i
+
+
+            return true;
+        }
+
+        /// <summary>
+        /// Finds the shortest line segment we can create to connect the hole outline to the sector's outline.
+        /// </summary>
+        /// <returns>True if successful.</returns>
+        private static bool FindClosestConnector(HoleData holeData)
+        {
+            List<Vector2> holeVerts = holeData.Vertices;
+
+
+            // Iterate through all points in the hole.
+            for (int i = 0; i < holeVerts.Count; i++)
+            {
+                Vector2 curHoleOutlinePoint = holeVerts[i];
+
+                // Iterate through all vertices in the sector outline.
+                for (int j = 0; j < SectorOutline.Count; j++)
+                {
+                    Vector2 curSectorOutlinePoint = SectorOutline[j];
+
+                    // Check if this line segment would be the shortest possible connector so far.
+                    float distance = Vector2.Distance(curHoleOutlinePoint, curSectorOutlinePoint);
+                    if (distance < holeData.ClosestConnectorData.Length)
+                    {
+                        // Check if this line segment is a valid connector.
+                        if (!IsValidConnector(holeData, i, j))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            holeData.ClosestConnectorData.Length = distance;
+                            holeData.ClosestConnectorData.HolePointIndex = i;
+                            holeData.ClosestConnectorData.SectorOutlinePointIndex = j;
+                        }
+                    }
+
+                } // end for j
+            } // end for i
+
+
+            return true;
+        }
+
+        /// <summary>
+        /// Checks if this possible connector (line segment) intersects any line segments in the sector outline,
+        /// or in any of the sector's hole outlines.
+        /// </summary>
+        /// <param name="holeID">The ID of the hole we are working on.</param>
+        /// <param name="holeOutlinePointIndex">The end of the connector that is attached to the hole's outline.</param>
+        /// <param name="sectorOutlinePointIndex">The end of the connector that is attached to the sector's outline.</param>
+        /// <returns>True if successful.</returns>
+        private static bool IsValidConnector(HoleData holeData, int holeOutlinePointIndex, int sectorOutlinePointIndex)
+        {
+            Vector2 connectorStart = holeData.Vertices[holeOutlinePointIndex];
+            Vector2 connectorEnd = SectorOutline[sectorOutlinePointIndex];
+
+
+            // Check if this line segment intersects with any line segments in any of the hole outlines.
+            foreach (KeyValuePair<int, HoleData> pair in Holes)
+            {
+                HoleData curHole = pair.Value;
+
+                Vector2 lineStart = Vector2.zero;
+                Vector2 lineEnd = Vector2.zero;
+
+                // If this is the hole we're checking, then skip it since
+                if (curHole.ID == holeData.ID)
+                    continue;
+
+
+                // Iterate through all of the line segments in this hole's outline to see if this potential connector intersects with any.
+                for (int j = 0; j < curHole.Vertices.Count; j++)
+                {
+                    lineStart = curHole.Vertices[j];
+                    lineEnd = curHole.Vertices[Triangulator_Polygon.WrapIndex(j + 1, curHole.Vertices.Count)];
+
+                    if (Lines.GetLineSegmentIntersectionPoint(connectorStart, connectorEnd, lineStart, lineEnd, out _, true))
+                    {
+                        Debug.LogError("Hole intersects with itself!");
+                        return false;
+                    }
+
+                } // end for j
+
+                // Iterate through all of the line segments in the sector's outline to see if this potential connector intersects with any.
+                for (int k = 0; k < curHole.Vertices.Count; k++)
+                {
+                    lineStart = SectorOutline[k];
+                    lineEnd = SectorOutline[Triangulator_Polygon.WrapIndex(k + 1, SectorOutline.Count)];
+
+                    if (Lines.GetLineSegmentIntersectionPoint(connectorStart, connectorEnd, lineStart, lineEnd, out _, true))
+                    {
+                        Debug.LogError("Hole intersects with sector outline!");
+                        return false;
+                    }
+
+                } // end for j
+
+            } // end for i
+
+
+            return true;
+        }
+
+        /// <summary>
+        /// Resets every hole's ClosestConnectorData object.
+        /// </summary>
+        private static void ResetAllEntriesInSortedList()
+        {
+            for (int i = 0; i < _SortedHolesList.Count; i++)
+            {
+                _SortedHolesList[i].ClosestConnectorData.Reset();
+            }
+        }
+
+
+
+        /// <summary>
+        ///  Holds data about a hole in the sector.
+        /// </summary>
+        public class HoleData
+        {
+            public int ID;
+            public List<Vector2> Vertices;
+
+            /// <summary>
+            /// Holds basic information about the hole's outline, such as whether or not its winding order is clockwise.
+            /// </summary>
+            public PolygonDetails PolygonDetails;
+
+            /// <summary>
+            /// Holds information on the shortest line segment we can use to connect the hole's outline to the sector's outline.
+            /// </summary>
+            public ClosestConnectorData ClosestConnectorData = new ClosestConnectorData();
+        }
+
+
+        /// <summary>
+        /// Holds data about a possible connector (line segment) that could be used to connect a hole's outline to the sector's outline.
+        /// </summary>
+        public class ClosestConnectorData
+        {
+            public int SectorOutlinePointIndex = -1; // The index of the point that is on the sector's outline
+            public int HolePointIndex = -1; // The index of the point that is on the hole's outline
+            public float Length = float.MaxValue; // The length of this connector
+
+
+            public void Reset()
+            {
+                SectorOutlinePointIndex = -1;
+                HolePointIndex = -1;
+                Length = float.MaxValue;
+            }
+        }
     }
 }

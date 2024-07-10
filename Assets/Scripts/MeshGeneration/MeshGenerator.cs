@@ -129,12 +129,14 @@ namespace DIY_DOOM.MeshGeneration
 
 
             // Generate geometry for the floors
-            GenerateFloorsGeometry();
+            if (DoomEngine.Settings.EnableFloorGeneration)
+                GenerateFloorsGeometry();
             
             /*
             Material mat = _SubMeshLookup.ContainsKey("FLOOR0_1") ? _SubMeshLookup["FLOOR0_1"].Material : CreateMaterial("FLOOR0_1");
             MeshData meshData = new MeshData("Triangulator Test", mat);
             Triangulator_Polygon.Triangulate(TestPolygons.Star_Clockwise.ToList(), meshData);
+            Debug.Log("TRIANGULATION RESULT: " + Triangulator_Polygon.LastTriangulationResult);
             _SubMeshLookup.Add(meshData.TextureName, meshData);
             */
 
@@ -143,9 +145,9 @@ namespace DIY_DOOM.MeshGeneration
 
         private static void GenerateFloorsGeometry()
         {
-            for (int i = 0; i < _Map.SubSectorsCount; i++)
+            for (int i = 0; i < _Map.SectorsCount; i++)
             {
-                if (i > 1)
+                if (i >= 2)
                     break;
 
                 // Get the next sector definition
@@ -164,10 +166,11 @@ namespace DIY_DOOM.MeshGeneration
                 // Triangulate it to create the floor geometry.
                 if (Triangulator_Polygon.Triangulate(sectorDef.SectorOutline, floorMeshData, sectorDef.FloorHeight, false))
                 {
-
+                    Debug.LogError($"Triangulated sector {i}: {Triangulator_Polygon.LastTriangulationResult}");
                 }
                 else
                 {
+                    // TODO: Make the generated floor/ceiling geometry data be stored in a temporary mesh data and add it to the correct one only if we succeed.
                     Debug.LogError($"Failed to triangulate the floor geometry of sector[{i}]!");
                 }
 

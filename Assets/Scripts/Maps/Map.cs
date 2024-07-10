@@ -227,7 +227,7 @@ namespace DIY_DOOM.Maps
 
         private void GetSectorSegs()
         {
-            /*
+            /* TODO: Remove this code once its all working properly
             for (int i = 0; i < _SubSectorDefs.Count; i++)
             {
                 SubSectorDef subSector = _SubSectorDefs[i];

@@ -66,7 +66,7 @@ namespace DIY_DOOM
 
         [Header("Debug - Geometry Generation")]
         
-        [Tooltip("Whether or not to enable geometry generation.")]
+        [Tooltip("Whether or not to enable geometry generation. This setting overrides all of the ones after it, meaning that if it is disabled then all geometry is disabled reguardless of the settings below.")]
         public bool EnableGeometryGeneration = true;
 
         [Tooltip("Whether or not wall faces with lower textures on them will be generated.")]
@@ -77,6 +77,12 @@ namespace DIY_DOOM
         
         [Tooltip("Whether or not wall faces with upper textures on them will be generated.")]
         public bool EnableWallGeneration_UpperTextures = true;
+
+        [Tooltip("Whether or not floor faces will be generated.")]
+        public bool EnableFloorGeneration = true;
+
+        [Tooltip("Whether or not floor faces will be generated.")]
+        public bool EnableCeilingGeneration = true;
 
     }
 }

@@ -27,8 +27,8 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
         /// outside the polygon, which is no good! See the article linked above for information on what
         /// else can cause problems for this algorithm, such as a polygon with lines that cross.
         /// </remarks>
-        /// <returns>True if successful.</returns>
-        public static bool Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
+        /// <returns>The result code indicating whether the triangulation was successful or what error it failed with.</returns>
+        public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
         {
             List<int> indicesToRemove = new List<int>();
 
@@ -66,8 +66,8 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
 
                     if (consecutiveLoopsWithNoClippings >= 3)
                     {
-                        Debug.LogError("Failed to fully triangulate this concave polygon because it is invalid!");
-                        return false;
+                        Debug.LogError("Failed to fully triangulate this concave polygon! The ear clipping algorithm could not create any more triangles.");
+                        return TriangulationResults.Failed_EarClippingAlgorithmCouldntContinue;
                     }
 
 
@@ -135,7 +135,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
             } // end while
 
 
-            return false;
+            return TriangulationResults.Succeeded;
         }
 
         /// <summary>

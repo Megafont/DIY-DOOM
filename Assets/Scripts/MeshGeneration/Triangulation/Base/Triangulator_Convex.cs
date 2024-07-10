@@ -25,8 +25,8 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
         /// <param name="vertices">The vertices of the polygon.</param>
         /// <param name="meshData">The <see cref="MeshData"/> object to store the generated triangles in.</param>
         /// <param name="yValue">The y position or elevation of the polygon.</param>
-        /// <returns>True if successful.</returns>
-        public static bool Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
+        /// <returns>The result code indicating whether the triangulation was successful or what error it failed with.</returns>
+        public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
         {
             for (int i = 1; i < vertices.Count - 1; i++)
             {
@@ -39,7 +39,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
 
             } // end for i, j
 
-            return true;
+            return TriangulationResults.Succeeded;
         }
     }
 }

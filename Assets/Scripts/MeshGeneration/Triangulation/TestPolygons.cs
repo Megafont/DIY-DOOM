@@ -73,14 +73,10 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             new Vector2(0, -2),
         };
 
-        // **********************************************************************************************
-        // IMPORTANT:
-        // **********************************************************************************************
-        // The star shape is not working. The code is calling it counter-clockwise, and the concave
-        // triangulator messes up bad, which is expected with a counter-clockwise polygon.
-        //
-        // FIRST: Verify that the vertices are correct in this array!
-        // **********************************************************************************************
+        // ----------------------------------------------------------------------------------------------------
+        // Miscellaneous
+        // ----------------------------------------------------------------------------------------------------
+
         public static Vector2[] Star_Clockwise = new Vector2[]
         {
             new Vector2(0, -1),
@@ -105,5 +101,20 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             new Vector2(1, 3),
             new Vector2(-2, 3),
         };
+
+        
+
+        // ----------------------------------------------------------------------------------------------------
+        // Invalid
+        // ----------------------------------------------------------------------------------------------------
+
+        public static Vector2[] CrossingLines = new Vector2[]
+        {
+            new Vector2(0, 0),
+            new Vector2(1, 1),
+            new Vector2(0, 1),
+            new Vector2(1, 0),
+        };
+
     }
 }
