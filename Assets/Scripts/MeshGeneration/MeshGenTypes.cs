@@ -47,8 +47,14 @@ namespace DIY_DOOM.MeshGeneration
 
         public void Add(MeshData meshData)
         {
+            // We add the triangles first because we have to shift each vertex index by the number of vertices that are already in this mesh.
+            for (int i = 0; i < meshData.Triangles.Count; i++)
+            {
+                Triangles.Add(meshData.Triangles[i] + Vertices.Count);
+            }
+
+            // Add the vertices and UVs.
             Vertices.AddRange(meshData.Vertices);
-            Triangles.AddRange(meshData.Triangles);
             UVs.AddRange(meshData.UVs);
         }
     }

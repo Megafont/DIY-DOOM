@@ -443,6 +443,7 @@ namespace DIY_DOOM.WADs
             for (int i = 0; i < sectorsCount; i++)
             {
                 sector = _Reader.ReadSectorData(_WAD_Data, (int)(_WAD_Directories[mapIndex].LumpOffset + i * sectorSizeInBytes));
+                sector.ID = (uint) i;
 
                 map.AddSectorDef(sector);
 

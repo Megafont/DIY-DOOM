@@ -30,8 +30,6 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
         /// <returns>The result code indicating whether the triangulation was successful or what error it failed with.</returns>
         public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
         {
-            List<int> indicesToRemove = new List<int>();
-
             int prevIndex = -1;
             int curIndex = -1;
             int nextIndex = -1;
@@ -40,12 +38,26 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
             int earsClipped = 0;
             int consecutiveLoopsWithNoClippings = 0;
 
+            List<Vector2> verts = new List<Vector2>(vertices);
 
+            float yOffset = 0;
+            
+            
+            /*
+            // Remove consecutive duplicate verts.
+            for (int i = vertices.Count - 1; i > 0; i--)
+            {
+                if (vertices[i] == vertices[i - 1])
+                    vertices.RemoveAt(i);
+            }
+            */
+            
+            
             // Loop until the ear clipping algorithm is complete.
-            while(true)
+            while (true)
             {
                 // If we don't have enough vertices left to make another triangle, it means we are done!
-                if (vertices.Count < 3)
+                if (verts.Count < 3)
                     break;
 
 
@@ -63,34 +75,47 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
                         consecutiveLoopsWithNoClippings = 0;
                     }
 
-
+                    
                     if (consecutiveLoopsWithNoClippings >= 3)
                     {
                         Debug.LogError("Failed to fully triangulate this concave polygon! The ear clipping algorithm could not create any more triangles.");
+
+                        Debug.Log("REMAINING VERTS AT FAILURE POINT:");
+                        for (int i = 0; i < verts.Count; i++)
+                        {
+                            Debug.Log($"<color=red>    [{i}]: {verts[i]}</color>");
+                        }
+
+                        Debug.Log("ALL VERTS:");
+                        for (int i = 0; i < vertices.Count; i++)
+                        {
+                            Debug.Log($"<color=red>    [{i}]: {vertices[i]}</color>");
+                        }
+                        
                         return TriangulationResults.Failed_EarClippingAlgorithmCouldntContinue;
                     }
 
 
                     // Reset the counters to prepare for our next trip around the parent polygon.
-                    curVertCount = vertices.Count;
+                    curVertCount = verts.Count;
                     earsClipped = 0;
                 }
 
 
                 // Get the indices of the three vertices of the current corner, which can potentially form a new triangle.
                 curIndex++;
-                //int old = curIndex;
-                curIndex = Triangulator_Polygon.WrapIndex(curIndex, vertices.Count);
-                prevIndex = Triangulator_Polygon.WrapIndex(curIndex - 1, vertices.Count);
-                nextIndex = Triangulator_Polygon.WrapIndex(curIndex + 1, vertices.Count);
+
+                curIndex = Triangulator_Polygon.WrapIndex(curIndex, verts.Count);
+                prevIndex = Triangulator_Polygon.WrapIndex(curIndex - 1, verts.Count);
+                nextIndex = Triangulator_Polygon.WrapIndex(curIndex + 1, verts.Count);
 
                 //Debug.Log($"WRAPPED {old} to {curIndex}.    Prev={prevIndex}    Next={nextIndex}    Count={vertices.Count}");
 
 
                 // Get the current vertex, and the previous and next vertices
-                Vector2 vPrev = vertices[prevIndex];
-                Vector2 vCurrent = vertices[curIndex];
-                Vector2 vNext = vertices[nextIndex];
+                Vector2 vPrev = verts[prevIndex];
+                Vector2 vCurrent = verts[curIndex];
+                Vector2 vNext = verts[nextIndex];
 
 
 
@@ -102,8 +127,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
                 // Have we found a good candidate corner that meets the following conditions?
                 // 1. It's convex (assuming the polygon has its vertices in clockwise order).
                 // 2. No other vertex in the polygon is inside this triangle.
-
-
+                //
                 // Check the direction of the corner formed by them
                 float crossProduct = Triangulator_Polygon.CalculateCrossProductYOnly(line1, line2);
                 if (crossProduct < 0)
@@ -111,24 +135,27 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
                     // This corner is concave, so simply continue to the next iteration.
                     continue;
                 }
-                else if (crossProduct > 0)
+                else
                 {
                     //Debug.Log("Clipping ear...");
 
                     // This corner is convex, so check if this triangle overlaps any other corner of the parent polygon.
                     // If so, simply jump to the next iteration of this loop.
-                    if (ContainsPolygonVertexThatIsntPartOfThisTriangle(vertices, prevIndex, curIndex, nextIndex))
+                    if (ContainsPolygonVertexThatIsntPartOfThisTriangle(verts, prevIndex, curIndex, nextIndex))
                         continue;
 
+
                     // We've found a good candidate corner (aka ear), so generate the triangle.
-                    Triangulator_Polygon.GenerateTriangle(meshData, vPrev, vCurrent, vNext, yValue);
+                    Triangulator_Polygon.GenerateTriangle(meshData, vPrev, vCurrent, vNext, yValue + yOffset);
+                    yOffset += 0.5f;
 
                     // Clip the ear (corner) off of the parent polygon by removing the center vertex.
-                    vertices.RemoveAt(curIndex);
+                    verts.RemoveAt(curIndex);
 
                     // Track how many "ears" we clipped during this trip around the parent polygon.
                     earsClipped++;
                 }
+                
                 // NOTE: We don't have a third clause here to check for colinear line segments, as those were already removed before Triangulator_Polygon called this function.
 
 

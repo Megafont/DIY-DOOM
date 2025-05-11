@@ -8,6 +8,8 @@ namespace DIY_DOOM.WADs.Data.Maps
 {
     public class SectorDef
     {
+        public uint ID;
+
         public float FloorHeight;
         public float CeilingHeight;
 

@@ -9,6 +9,7 @@ using DIY_DOOM.MeshGeneration.Triangulation.Base;
 using DIY_DOOM.Utils.Maps;
 using UnityEngine.AI;
 using static UnityEngine.Mesh;
+using UnityEngine.UI;
 
 
 // **************************************************************************************************************************************************
@@ -78,6 +79,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             if (vertices == null)
             {
                 CacheResultsData(new MeshData(meshData.TextureName, meshData.Material), TriangulationResults.Failed_VerticesListIsNull);
+                Debug.Log("<color=red>TRI FAIL 1</color>");
                 return false;
             }
 
@@ -96,6 +98,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             if (result != TriangulationResults.Succeeded)
             { 
                 CacheResultsData(tempMeshData, result);
+                Debug.Log("<color=red>TRI FAIL 2</color>");
                 return false;
             }
 
@@ -116,7 +119,11 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
 
             if (result != TriangulationResults.Succeeded)
             {
+                Debug.Log($"<color=red>TRI FAIL 3: {result}    IsClockwise: {LastTriangulationPolygonDetails.IsClockwise}</color>");
+
+                meshData.Add(tempMeshData);
                 CacheResultsData(tempMeshData, result);
+                
                 return false;
             }
 
@@ -128,6 +135,8 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
                 if (result != TriangulationResults.Succeeded)
                 {
                     CacheResultsData(tempMeshData, result);
+                    Debug.Log("<color=red>TRI FAIL 4</color>");
+
                     return false;
                 }
             }
@@ -140,7 +149,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             meshData.Add(tempMeshData);
 
 
-            Debug.Log($"POLYGON INFO:    Original Vertex Count: {originVertCount}    Final Vertex Count: {tempMeshData.Vertices.Count}    IsConvex: {LastTriangulationPolygonDetails.IsConvex}    IsClockwise: {LastTriangulationPolygonDetails.IsClockwise}    LeftTurns: {LastTriangulationPolygonDetails.LeftTurns}    RightTurns: {LastTriangulationPolygonDetails.RightTurns}    ColinearSections: {LastTriangulationPolygonDetails.ColinearSections}    Result: {LastTriangulationResult}");
+            Debug.Log($"POLYGON INFO:    Original Vertex Count: {originVertCount}    Final Vertex Count: {tempMeshData.Vertices.Count}    IsConvex: {LastTriangulationPolygonDetails.IsConvex}    IsClockwise: {LastTriangulationPolygonDetails.IsClockwise}    LeftTurns: {LastTriangulationPolygonDetails.LeftTurns}    RightTurns: {LastTriangulationPolygonDetails.RightTurns}    ColinearSections: {LastTriangulationPolygonDetails.ColinearSections}    Result: {LastTriangulationResult}    Texture: {meshData.TextureName}");
 
             // Return true if we succeeded.
             return LastTriangulationResult == TriangulationResults.Succeeded;
@@ -160,7 +169,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
 
 
             // Make sure the vertices list is not null.
-            if (vertices == null)
+            if (vertices == null || vertices.Count < 3)
             {
                 return false;
             }
@@ -194,7 +203,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         private static TriangulationResults ValidatePolygon(List<Vector2> vertices)
         {
             // Check that there are at least three vertices.
-            if (vertices.Count < 3)
+            if (vertices == null && vertices.Count < 3)
                 return TriangulationResults.Failed_NotEnoughVertices;
 
 
@@ -241,9 +250,9 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
                     Vector2 line2Start = vertices[WrapIndex(j, vertices.Count)];
                     Vector2 line2End = vertices[WrapIndex(j + 1, vertices.Count)];
 
-                    if (Lines.GetLineSegmentIntersectionPoint(line1Start, line1End, line2Start, line2End, out Vector3 intersectionPoint, true))
+                    if (Lines.GetLineSegmentIntersectionPoint(line1Start, line1End, line2Start, line2End, out Vector2 intersectionPoint, true))
                     {
-                        //Debug.Log($"Line1[{i}]: {line1Start} - {line1End}    Line2[{j}]: {line2Start} - {line2End}    Intersection: {intersectionPoint}    Failed");
+                        Debug.Log($"<color=red>Line1[{i}]: {line1Start} - {line1End}    Line2[{j}]: {line2Start} - {line2End}    Intersection: {intersectionPoint}    Failed</color>");
                         return TriangulationResults.Failed_IntersectingLineSegments;
                     }
 
@@ -313,8 +322,8 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
 
 
             // Set the private member variables based on information obtained from the polygon
-            return new PolygonDetails((leftTurns == 0 && rightTurns > 0) || (rightTurns == 0 && leftTurns > 0),
-                                      IsClockwise(vertices),
+            return new PolygonDetails((leftTurns > 0 && rightTurns <= 0) || (leftTurns <= 0 && rightTurns > 0),
+                                      IsClockwise(vertices, leftTurns, rightTurns),
                                       leftTurns,
                                       rightTurns,
                                       colinearSections);
@@ -335,32 +344,56 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         /// I found this algorithm in this StackOverflow answer:
         /// https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order#:~:text=Here's%20a%20simple%20one%20that,the%20curve%20is%20counter%2Dclockwise.
         /// </remarks>
-        private static bool IsClockwise(List<Vector2> vertices)
+        private static bool IsClockwise(List<Vector2> vertices, int leftTurns, int rightTurns)
         {
             float sumOfEdges = 0f;
 
-            for (int i = 0; i < vertices.Count - 1; i++)
+            for (int i = 0; i < vertices.Count; i++)
             {
+                int prevIndex = i - 1;
+                if (prevIndex < 0)
+                    prevIndex = vertices.Count - 1;
+
                 int nextIndex = i + 1;
                 if (nextIndex >= vertices.Count)
                     nextIndex = 0;
 
-                sumOfEdges += (vertices[nextIndex].x - vertices[i].x) * (vertices[nextIndex].y + vertices[i].y);
+                //sumOfEdges += (vertices[nextIndex].x - vertices[i].x) * (vertices[nextIndex].y + vertices[i].y);
+                sumOfEdges += ((vertices[i].x - vertices[prevIndex].x) * (vertices[nextIndex].y - vertices[prevIndex].y)) -
+                              ((vertices[nextIndex].x - vertices[prevIndex].x) * (vertices[i].y - vertices[prevIndex].y));
+
+                //sumOfEdges += (vertices[i].x * vertices[nextIndex].y) - (vertices[nextIndex].x - vertices[i].y);
+                Vector2 edge1 = vertices[i] - vertices[prevIndex];
+                Vector2 edge2 = vertices[nextIndex] - vertices[i];
+                
+                // Calculate the sine of the angle between the two edges multiplied by the product of their magnitudes.
+                float m2 = edge1.magnitude * edge2.magnitude;
+
+                // Calculate the k or z-axis component of the cross product of the two edges.
+                float k = (edge1.x * edge2.y) - (edge1.y * edge2.x);
+
+                float t = k / m2;
+                if (float.IsNaN(t))
+                    t = 0;
+                //sumOfEdges += t;
+                //Debug.Log($"<color=#0066ff>([{i}]:    ({k} / {m2}) = {k / m2}({t})    RUNNING SUM: {sumOfEdges}    VERT: {vertices[i]}</color>");
+                Debug.Log($"<color=#0066ff>([{i}]:    ({vertices[nextIndex].x} - {vertices[i].x}) * ({vertices[nextIndex].y} + {vertices[i].y}) = ({vertices[nextIndex].x - vertices[i].x}) * ({vertices[nextIndex].y + vertices[i].y}) = {(vertices[nextIndex].x - vertices[i].x) * (vertices[nextIndex].y + vertices[i].y)}    RUNNING SUM: {sumOfEdges}    VERT: {vertices[i]}</color>");
 
             } // end for i
-
-
-            //Debug.Log($"Sum: {sumOfEdges}");
 
 
             // I'm treating 0 as an odd value right now, since I'm not sure if it is even possible to get a sum of 0
             // from this algorithm. So this will alert me should that happen.
             // The return statement below will just consider 0 as positive for now.
             if (sumOfEdges == 0)
-                Debug.LogWarning("Triangulate_Polygon.IsClockwise() got a sum of 0!");
+            {
+                Debug.LogWarning($"Triangulate_Polygon.IsClockwise() got a sum of 0!    Vert Count: {vertices.Count}    L-Turns: {leftTurns}    R-Turns: {rightTurns}");
+                foreach (Vector2 v in vertices)
+                    Debug.LogWarning("    " + v);
+            }
 
 
-            return sumOfEdges >= 0;
+            return sumOfEdges < 0;
         }
 
         /// <summary>
@@ -370,7 +403,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         private static TriangulationResults RemoveDegenerateTriangles(MeshData meshData)
         {
             int c = 0;
-            for (int i = meshData.Triangles.Count - 1; i > 0; i -= 3)
+            for (int i = meshData.Triangles.Count - 1; i >= 2; i -= 3)
             {
                 Vector3 v1 = meshData.Vertices[meshData.Triangles[i]];
                 Vector3 v2 = meshData.Vertices[meshData.Triangles[i - 1]];
@@ -383,21 +416,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
                 {
                     // This triangle is colinear (has all three vertices at the same position on a single axis).
                     // So remove it.
-
-                    // First, remove the vertices of this triangle from the mesh data.
-                    meshData.Vertices.RemoveAt(meshData.Triangles[i]);
-                    meshData.Vertices.RemoveAt(meshData.Triangles[i - 1]);
-                    meshData.Vertices.RemoveAt(meshData.Triangles[i - 2]);
-
-                    // Now remove the triangle vertex indices for this triangle.
-                    meshData.Triangles.RemoveAt(i);
-                    meshData.Triangles.RemoveAt(i - 1);
-                    meshData.Triangles.RemoveAt(i - 2);
-
-                    // Now remove the UVs for this triangle.
-                    meshData.UVs.RemoveAt(i);
-                    meshData.UVs.RemoveAt(i - 1);
-                    meshData.UVs.RemoveAt(i - 2);
+                    RemoveTriangle(meshData, i - 2);
 
                     c++;
                 }
@@ -408,6 +427,32 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             Debug.Log($"Removed {c} degenerate triangles.");           
 
             return TriangulationResults.Succeeded;
+        }
+
+        private static void RemoveTriangle(MeshData meshData, int index)
+        {
+            // First, remove the vertices of this triangle from the mesh data.
+            meshData.Vertices.RemoveAt(meshData.Triangles[index + 2]);
+            meshData.Vertices.RemoveAt(meshData.Triangles[index + 1]);
+            meshData.Vertices.RemoveAt(meshData.Triangles[index]);
+
+            // Now remove the triangle vertex indices for this triangle.
+            meshData.Triangles.RemoveAt(index + 2);
+            meshData.Triangles.RemoveAt(index + 1);
+            meshData.Triangles.RemoveAt(index);
+
+            // Now remove the UVs for this triangle.
+            meshData.UVs.RemoveAt(index + 2);
+            meshData.UVs.RemoveAt(index + 1);
+            meshData.UVs.RemoveAt(index);
+
+            
+            // Lastly, we need to shift the triangle vertex indices for all entries after the removed triangle since everything shifted up
+            // three spaces in the list.
+            for (int i = index; i < meshData.Triangles.Count; i++)
+            {
+                meshData.Triangles[i] -= 3;
+            }            
         }
 
         /// <summary>
@@ -480,6 +525,16 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         public static void GenerateTriangle(MeshData meshData, Vector2 v1, Vector2 v2, Vector2 v3, float yValue = 0.0f)
         {
             int nextIndex = meshData.Vertices.Count;
+
+            /*
+            // TODO: Remove this code when not needed.
+            Debug.Log(new string('-', 256));
+            Debug.Log($"TRIANGLE: ({meshData.TextureName})");
+            Debug.Log(MapUtils.Point2dTo3dXZ(v1, yValue));
+            Debug.Log(MapUtils.Point2dTo3dXZ(v2, yValue));
+            Debug.Log(MapUtils.Point2dTo3dXZ(v3, yValue));
+            */
+            
 
             // Add vertices for the next triangle.
             meshData.Vertices.Add(MapUtils.Point2dTo3dXZ(v1, yValue));

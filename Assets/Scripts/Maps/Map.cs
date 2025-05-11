@@ -189,6 +189,17 @@ namespace DIY_DOOM.Maps
             return _SectorDefs[(int) index];
         }
 
+        public SectorDef GetSectorDefByID(int id)
+        {
+            for (int i = 0; i < _SectorDefs.Count; i++)
+            {
+                if (_SectorDefs[i].ID == id)
+                    return _SectorDefs[i];
+            }
+
+            return null;
+        }
+
         public SubSectorDef GetSubSectorDef(uint index)
         {
             return _SubSectorDefs[(int) index];
@@ -314,7 +325,7 @@ namespace DIY_DOOM.Maps
         private void DetermineSectorOutlines()
         {
             // TODO: Make Map.DetermineSectorOutlines() process all sectors.
-            for (int i = 0; i < 3 /*_SectorDefs.Count*/; i++)
+            for (int i = 0; i <= 20 /*_SectorDefs.Count*/; i++)
             {
                 SectorOutlineGenerator.DetermineOutline(this, i);
             }

@@ -130,8 +130,11 @@ namespace DIY_DOOM.MeshGeneration
 
             // Generate geometry for the floors
             if (DoomEngine.Settings.EnableFloorGeneration)
-                GenerateFloorsGeometry();
-            
+            {
+                GenerateSectorFloorGeometry(_Map.GetSectorDefByID(16));
+                //GenerateFloorsGeometry();
+            }
+
             /*
             Material mat = _SubMeshLookup.ContainsKey("FLOOR0_1") ? _SubMeshLookup["FLOOR0_1"].Material : CreateMaterial("FLOOR0_1");
             MeshData meshData = new MeshData("Triangulator Test", mat);
@@ -143,36 +146,43 @@ namespace DIY_DOOM.MeshGeneration
             return CreateOutputObject();            
         }
 
+        private static bool GenerateSectorFloorGeometry(SectorDef sectorDef)
+        {
+            if (sectorDef.SectorOutline.Count < 3)
+            {
+                return false;
+            }
+
+            // Get the appropriate MeshData objects to add the floor/ceiling geometry of this sector to.
+            GetMeshData(sectorDef.CeilingTextureName, out MeshData ceilingMeshData);
+            GetMeshData(sectorDef.FloorTextureName, out MeshData floorMeshData);
+
+            // Triangulate it to create the floor geometry.
+            if (Triangulator_Polygon.Triangulate(sectorDef.SectorOutline, floorMeshData, sectorDef.FloorHeight, false))
+            {
+                Debug.LogWarning($"Triangulated sector {sectorDef.ID}: {Triangulator_Polygon.LastTriangulationResult}");
+            }
+            else
+            {
+                // TODO: Make the generated floor/ceiling geometry data be stored in a temporary mesh data and add it to the correct one only if we succeed.
+                Debug.LogError($"Failed to triangulate the floor geometry of sector[{sectorDef.ID}]!");
+            }
+
+            return true;
+        }
+        
         private static void GenerateFloorsGeometry()
         {
             for (int i = 0; i < _Map.SectorsCount; i++)
             {
-                if (i >= 2)
+                Debug.LogWarning("TODO: Remove this limiter!");
+                if (i >= 20)
                     break;
 
                 // Get the next sector definition
                 SectorDef sectorDef = _Map.GetSectorDef((uint) i);
-
-                if (sectorDef.SectorOutline.Count < 3)
-                {
-                    Debug.LogWarning($"Sector[{i}] outline has less than 3 vertices! Skipping it.");
-                    continue;
-                }
-
-                // Get the appropriate MeshData objects to add the floor/ceiling geometry of this sector to.
-                GetMeshData(sectorDef.CeilingTextureName, out MeshData ceilingMeshData);
-                GetMeshData(sectorDef.FloorTextureName, out MeshData floorMeshData);
-
-                // Triangulate it to create the floor geometry.
-                if (Triangulator_Polygon.Triangulate(sectorDef.SectorOutline, floorMeshData, sectorDef.FloorHeight, false))
-                {
-                    Debug.LogError($"Triangulated sector {i}: {Triangulator_Polygon.LastTriangulationResult}");
-                }
-                else
-                {
-                    // TODO: Make the generated floor/ceiling geometry data be stored in a temporary mesh data and add it to the correct one only if we succeed.
-                    Debug.LogError($"Failed to triangulate the floor geometry of sector[{i}]!");
-                }
+                if (!GenerateSectorFloorGeometry(sectorDef))
+                    Debug.LogWarning($"Sector[{sectorDef.ID}] outline has failed to triangulate! Skipping it.");
 
             } // end for i
         }
