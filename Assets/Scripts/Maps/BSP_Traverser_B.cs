@@ -49,13 +49,12 @@ public class BSP_Traverser_B : MonoBehaviour
     private IEnumerator TraverseAndRenderBspNodes(uint nodeID)
     {
         //yield return new WaitForSeconds(1f);
-
+        
 
         // Check if this node represents a subSector (aka leaf node, which has no children).
         if ((nodeID & SUBSECTOR_IDENTIFIER) == SUBSECTOR_IDENTIFIER)
         {
             RenderSubSector(nodeID & (~SUBSECTOR_IDENTIFIER));
-
             yield break;
         }
 

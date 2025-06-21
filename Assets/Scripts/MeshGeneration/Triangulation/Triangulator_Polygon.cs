@@ -40,6 +40,13 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
     public static class Triangulator_Polygon
     {
         /// <summary>
+        /// This delegate is used by the Triangulator_Convex and Triangulator_Concave classes to simply the code a bit.
+        /// </summary>
+        public delegate void TriangulateDelegate(MeshData meshData, Vector2 v1, Vector2 v2, Vector2 v3, float yValue = 0.0f);
+        
+        
+        
+        /// <summary>
         /// Holds details of the last polygon that was triangulated.
         /// </summary>
         public static PolygonDetails LastTriangulationPolygonDetails { get; private set; }
@@ -66,8 +73,9 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         /// <param name="removeColinearLineSegments">If true, colinear line segments are removed from the polygon since they are unnecessary.</param>
         /// <param name="invertOrderIfCounterClockwise">If true, the winding order of the polygon is inverted if it is counter-clockwise.</param>
         /// <param name="removeDegenerateTriangles">If true, degenerate triangles are removed from the polygon.</param>
+        /// <param name="triangulateReversed">If true, the triangles generated will have their winding order reversed. This is used to flip the direction the resulting polygon will be facing.</param>
         /// <returns>True if successful. You can check the  <see cref="LastTriangulationResult"/> property for an error code if something went wrong."/></returns>
-        public static bool Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f, bool removeColinearLineSegments = true, bool invertOrderIfCounterClockwise = true, bool removeDegenerateTriangles = true)
+        public static bool Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f, bool removeColinearLineSegments = true, bool invertOrderIfCounterClockwise = true, bool removeDegenerateTriangles = true, bool triangulateReversed = false)
         {
             if (meshData == null)
                 throw new ArgumentNullException(nameof(meshData));
@@ -113,9 +121,9 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
 
             // Triangulate the polygon appropriately depending on whether it is convex or concave.
             if (LastTriangulationPolygonDetails.IsConvex)
-                result = Triangulator_Convex.Triangulate(vertexList, tempMeshData, yValue);
+                result = Triangulator_Convex.Triangulate(vertexList, tempMeshData, yValue, triangulateReversed);
             else
-                result = Triangulator_Concave.Triangulate(vertexList, tempMeshData, yValue);
+                result = Triangulator_Concave.Triangulate(vertexList, tempMeshData, yValue, triangulateReversed);
 
             if (result != TriangulationResults.Succeeded)
             {
@@ -131,11 +139,11 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             // Remove degenerate triangles where all three vertexData are at the same position on the x, or z axis.
             if (removeDegenerateTriangles)
             {
-                result = RemoveDegenerateTriangles(meshData);
+                result = RemoveDegenerateTriangles(tempMeshData);
                 if (result != TriangulationResults.Succeeded)
                 {
                     CacheResultsData(tempMeshData, result);
-                    Debug.Log("<color=red>TRI FAIL 4</color>");
+                    Debug.Log($"<color=red>TRI FAIL 4 {result}    IsClockwise: {LastTriangulationPolygonDetails.IsClockwise}</color>");
 
                     return false;
                 }
@@ -312,12 +320,13 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             // Remove the center vertex in each colinear section to turn it into a single line segement.
             if (removeColinearLineSegments)
             {
+                int len = vertices.Count;
                 for (int i = indicesToRemove.Count - 1; i >= 0; i--)
                 {
                     vertices.RemoveAt(indicesToRemove[i]);
                 }
 
-                Debug.Log($"Removed {indicesToRemove.Count} colinear line segments.");
+                Debug.Log($"Removed {indicesToRemove.Count} colinear line segments.   Count Before: {len}    After: {vertices.Count}");
             }
 
 
@@ -328,7 +337,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
                                       rightTurns,
                                       colinearSections);
         }
-
+        
         /// <summary>
         /// This function uses a simple algorithm to determine whether the polygon is clockwise or
         /// counter-clockwise.
@@ -344,7 +353,7 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         /// I found this algorithm in this StackOverflow answer:
         /// https://stackoverflow.com/questions/1165647/how-to-determine-if-a-list-of-polygon-points-are-in-clockwise-order#:~:text=Here's%20a%20simple%20one%20that,the%20curve%20is%20counter%2Dclockwise.
         /// </remarks>
-        private static bool IsClockwise(List<Vector2> vertices, int leftTurns, int rightTurns)
+        public static bool IsClockwise(List<Vector2> vertices, int leftTurns, int rightTurns)
         {
             float sumOfEdges = 0f;
 
@@ -358,11 +367,14 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
                 if (nextIndex >= vertices.Count)
                     nextIndex = 0;
 
-                //sumOfEdges += (vertices[nextIndex].x - vertices[i].x) * (vertices[nextIndex].y + vertices[i].y);
-                sumOfEdges += ((vertices[i].x - vertices[prevIndex].x) * (vertices[nextIndex].y - vertices[prevIndex].y)) -
-                              ((vertices[nextIndex].x - vertices[prevIndex].x) * (vertices[i].y - vertices[prevIndex].y));
+                sumOfEdges += (vertices[nextIndex].x - vertices[i].x) * (vertices[nextIndex].y + vertices[i].y);
+                
+                //sumOfEdges += ((vertices[i].x - vertices[prevIndex].x) * (vertices[nextIndex].y - vertices[prevIndex].y)) -
+                //              ((vertices[nextIndex].x - vertices[prevIndex].x) * (vertices[i].y - vertices[prevIndex].y));
 
                 //sumOfEdges += (vertices[i].x * vertices[nextIndex].y) - (vertices[nextIndex].x - vertices[i].y);
+                
+                /*
                 Vector2 edge1 = vertices[i] - vertices[prevIndex];
                 Vector2 edge2 = vertices[nextIndex] - vertices[i];
                 
@@ -375,8 +387,12 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
                 float t = k / m2;
                 if (float.IsNaN(t))
                     t = 0;
-                //sumOfEdges += t;
-                //Debug.Log($"<color=#0066ff>([{i}]:    ({k} / {m2}) = {k / m2}({t})    RUNNING SUM: {sumOfEdges}    VERT: {vertices[i]}</color>");
+                
+                sumOfEdges += t;
+
+                Debug.Log($"<color=#0066ff>([{i}]:    ({k} / {m2}) = {k / m2}({t})    RUNNING SUM: {sumOfEdges}    VERT: {vertices[i]}</color>");
+                */
+                
                 Debug.Log($"<color=#0066ff>([{i}]:    ({vertices[nextIndex].x} - {vertices[i].x}) * ({vertices[nextIndex].y} + {vertices[i].y}) = ({vertices[nextIndex].x - vertices[i].x}) * ({vertices[nextIndex].y + vertices[i].y}) = {(vertices[nextIndex].x - vertices[i].x) * (vertices[nextIndex].y + vertices[i].y)}    RUNNING SUM: {sumOfEdges}    VERT: {vertices[i]}</color>");
 
             } // end for i
@@ -393,9 +409,14 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             }
 
 
-            return sumOfEdges < 0;
+            return sumOfEdges > 0;
         }
 
+        public static bool IsClockwise(Vector2[] vertices, int leftTurns, int rightTurns)
+        {
+            return IsClockwise(new List<Vector2>(vertices), leftTurns, rightTurns);
+        }
+        
         /// <summary>
         /// Removes degenerate triangles where all three vertices are at the same position on the x or z axis.
         /// </summary>
@@ -431,10 +452,18 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
 
         private static void RemoveTriangle(MeshData meshData, int index)
         {
-            // First, remove the vertices of this triangle from the mesh data.
-            meshData.Vertices.RemoveAt(meshData.Triangles[index + 2]);
-            meshData.Vertices.RemoveAt(meshData.Triangles[index + 1]);
-            meshData.Vertices.RemoveAt(meshData.Triangles[index]);
+            // Get the indices of the vertices for this triangle.
+            List<int> verts = new List<int>();
+            verts.Add(meshData.Triangles[index]);
+            verts.Add(meshData.Triangles[index + 1]);
+            verts.Add(meshData.Triangles[index + 2]);
+            verts.Sort(); // We need to sort these vertex indices now.
+            
+            // First, remove the vertices of this triangle from the one with the highest index to the one with the lowest index. Otherwise, the indices of some vertices will change because of the removal of other vertices.
+            for (int i = verts.Count - 1; i >= 0; i--)
+            {
+               meshData.Vertices.RemoveAt(verts[i]);
+            }
 
             // Now remove the triangle vertex indices for this triangle.
             meshData.Triangles.RemoveAt(index + 2);
@@ -456,21 +485,37 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
         }
 
         /// <summary>
-        /// Checks if the two line segments defined by the three specified vertices are colinear (two sections of the same line).
-        /// The y-axis is ignored since a polygon is 2D.
+        /// Checks if the two line segments defined by the three specified 3D vertices are colinear (two sections of the same line).
         /// </summary>
         /// <param name="v1">The 1st vertex</param>
         /// <param name="v2">The 2nd vertex</param>
         /// <param name="v3">The 3rd vertex</param>
-        /// <returns></returns>
+        /// <returns>True if they are colinear or false otherwise.</returns>
         public static bool AreColinear(Vector3 v1, Vector3 v2, Vector3 v3)
         {
-            return ((v1.x == v2.x && v2.x == v3.x) || (v1.z == v2.z && v2.z == v3.z));
+            Vector3 lineSeg1 = v2 - v1;
+            Vector3 lineSeg2 = v3 - v2;
+
+            float dot = Vector3.Dot(lineSeg1.normalized, lineSeg2.normalized);
+            
+            return Mathf.Approximately(Mathf.Abs(dot), 1f);
         }
 
+        /// <summary>
+        /// Checks if the two line segments defined by the three specified 2D vertices are colinear (two sections of the same line).
+        /// </summary>
+        /// <param name="v1">The 1st vertex</param>
+        /// <param name="v2">The 2nd vertex</param>
+        /// <param name="v3">The 3rd vertex</param>
+        /// <returns>True if they are colinear or false otherwise.</returns>        
         public static bool AreColinear(Vector2 v1, Vector2 v2, Vector2 v3)
         {
-            return ((v1.x == v2.x && v2.x == v3.x) || (v1.y == v2.y && v2.y == v3.y));
+            Vector2 lineSeg1 = v2 - v1;
+            Vector2 lineSeg2 = v3 - v2;
+
+            float dot = Vector2.Dot(lineSeg1.normalized, lineSeg2.normalized);
+            
+            return Mathf.Approximately(Mathf.Abs(dot), 1f);
         }
 
         /// <summary>
@@ -547,10 +592,47 @@ namespace DIY_DOOM.MeshGeneration.Triangulation
             meshData.Triangles.Add(nextIndex + 2);
 
             // Add UVs 
-            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData.Vertices[nextIndex]));
-            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData.Vertices[nextIndex + 1]));
-            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData.Vertices[nextIndex + 2]));
+            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData, meshData.Vertices[nextIndex]));
+            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData, meshData.Vertices[nextIndex + 1]));
+            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData, meshData.Vertices[nextIndex + 2]));
         }
 
+        /// <summary>
+        /// Generates a single triangle in the specified MeshData object with its winding order reversed.
+        /// </summary>
+        /// <param name="meshData">The MeshData object to create the triangle in.</param>
+        /// <param name="v1">The first vertex</param>
+        /// <param name="v2">The second vertex</param>
+        /// <param name="v3">The third vertex</param>
+        /// <param name="yValue">The y position or elevation of the polygon.</param>
+        public static void GenerateTriangleReversed(MeshData meshData, Vector2 v1, Vector2 v2, Vector2 v3, float yValue = 0.0f)
+        {
+            int nextIndex = meshData.Vertices.Count;
+
+            /*
+            // TODO: Remove this code when not needed.
+            Debug.Log(new string('-', 256));
+            Debug.Log($"TRIANGLE: ({meshData.TextureName})");
+            Debug.Log(MapUtils.Point2dTo3dXZ(v1, yValue));
+            Debug.Log(MapUtils.Point2dTo3dXZ(v2, yValue));
+            Debug.Log(MapUtils.Point2dTo3dXZ(v3, yValue));
+            */
+            
+
+            // Add vertices for the next triangle.
+            meshData.Vertices.Add(MapUtils.Point2dTo3dXZ(v3, yValue));
+            meshData.Vertices.Add(MapUtils.Point2dTo3dXZ(v2, yValue));
+            meshData.Vertices.Add(MapUtils.Point2dTo3dXZ(v1, yValue));
+
+            // Add vertex indices for this triangle
+            meshData.Triangles.Add(nextIndex);
+            meshData.Triangles.Add(nextIndex + 1);
+            meshData.Triangles.Add(nextIndex + 2);
+
+            // Add UVs 
+            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData, meshData.Vertices[nextIndex]));
+            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData, meshData.Vertices[nextIndex + 1]));
+            meshData.UVs.Add(MeshGenerator.TransformFlatPointToUV(meshData, meshData.Vertices[nextIndex + 2]));
+        }        
     }
 }

@@ -106,6 +106,7 @@ namespace DIY_DOOM.Maps
             {
                 node.PartitionStart = MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionStart, _ScaleFactor);
                 node.DeltaToPartitionEnd = MapUtils.ScaleAndAdjustRawDoomPoint(node.DeltaToPartitionEnd, _ScaleFactor);
+                node.PartitionEnd = MapUtils.ScaleAndAdjustRawDoomPoint(node.PartitionEnd, _ScaleFactor);
                 node.RightBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_BottomLeft, _ScaleFactor);
                 node.RightBox_TopRight = MapUtils.ScaleAndAdjustRawDoomPoint(node.RightBox_TopRight, _ScaleFactor);
                 node.LeftBox_BottomLeft = MapUtils.ScaleAndAdjustRawDoomPoint(node.LeftBox_BottomLeft, _ScaleFactor);
@@ -171,6 +172,9 @@ namespace DIY_DOOM.Maps
 
         public LineDef GetLineDef(uint index)
         {
+            if (index >= _LineDefs.Count)
+                return null;
+
             return _LineDefs[(int) index];
         }
 
@@ -181,11 +185,17 @@ namespace DIY_DOOM.Maps
 
         public NodeDef GetNodeDef(uint index)
         {
+            if (index >= _NodeDefs.Count)
+                return null;
+
             return _NodeDefs[(int) index];
         }
 
         public SectorDef GetSectorDef(uint index)
         {
+            if (index >= _SectorDefs.Count)
+                return null;
+            
             return _SectorDefs[(int) index];
         }
 
@@ -202,17 +212,34 @@ namespace DIY_DOOM.Maps
 
         public SubSectorDef GetSubSectorDef(uint index)
         {
+            if (index >= _SubSectorDefs.Count)
+                return null;
+            
             return _SubSectorDefs[(int) index];
         }
 
         public SegDef GetSegDef(uint index)
         {
+            if (index >= _SegDefs.Count)
+                return null;
+            
             return _SegDefs[(int) index];
         }
 
         public SideDef GetSideDef(uint index)
         {
+            if (index >= _SideDefs.Count)
+                return null;
+            
             return _SideDefs[(int) index];
+        }
+
+        public SideDef GetSideDef(int index)
+        {
+            if (index < 0 || index >= _SideDefs.Count)
+                return null;
+
+            return _SideDefs[index];
         }
 
         /// <summary>
@@ -230,13 +257,39 @@ namespace DIY_DOOM.Maps
             if (_CenterMapOnOrigin)
                 CenterMapOnOrigin();
 
-            GetSectorSegs();
+            GetSectorLineDefs();
+            GetSectorSegDefs();
             DetermineSectorOutlines();
 
             _IsFullyLoaded = true;
         }
 
-        private void GetSectorSegs()
+        private void GetSectorLineDefs()
+        {
+            for (int i = 0; i < _LineDefs.Count; i++)
+            {
+                LineDef lineDef = _LineDefs[i];
+
+                int frontSideIndex = lineDef.FrontSideDefIndex;
+                int backSideIndex = lineDef.BackSideDefIndex;
+
+                SideDef frontSide = frontSideIndex >= 0 ? _SideDefs[frontSideIndex] : null;
+                SideDef backSide = backSideIndex >= 0 ? _SideDefs[backSideIndex] : null;
+                
+                if (frontSide != null)
+                {
+                    _SectorDefs[(int)frontSide.SectorIndex].FrontLineDefs.Add(lineDef);
+                }
+
+                if (backSide != null)
+                {
+                    _SectorDefs[(int)backSide.SectorIndex].BackLineDefs.Add(lineDef);
+                }
+
+            } // end for i
+        }
+        
+        private void GetSectorSegDefs()
         {
             /* TODO: Remove this code once its all working properly
             for (int i = 0; i < _SubSectorDefs.Count; i++)
@@ -310,13 +363,13 @@ namespace DIY_DOOM.Maps
                 if (frontSide != null)
                 {
                     seg.ID = i;
-                    _SectorDefs[(int)frontSide.SectorIndex].FrontSegs.Add(seg);
+                    _SectorDefs[(int)frontSide.SectorIndex].FrontSegDefs.Add(seg);
                 }
 
                 if (backSide != null)
                 {
                     seg.ID = i;
-                    _SectorDefs[(int)backSide.SectorIndex].BackSegs.Add(seg);
+                    _SectorDefs[(int)backSide.SectorIndex].BackSegDefs.Add(seg);
                 }
 
             } // end for i
@@ -324,8 +377,7 @@ namespace DIY_DOOM.Maps
 
         private void DetermineSectorOutlines()
         {
-            // TODO: Make Map.DetermineSectorOutlines() process all sectors.
-            for (int i = 0; i <= 20 /*_SectorDefs.Count*/; i++)
+            for (int i = 0; i < _SectorDefs.Count; i++)
             {
                 SectorOutlineGenerator.DetermineOutline(this, i);
             }
@@ -371,6 +423,7 @@ namespace DIY_DOOM.Maps
                 NodeDef def = _NodeDefs[i];
                 def.PartitionStart = _NodeDefs[i].PartitionStart - currentOffset;
                 def.DeltaToPartitionEnd = _NodeDefs[i].DeltaToPartitionEnd - currentOffset;
+                def.PartitionEnd = _NodeDefs[i].PartitionEnd - currentOffset;
                 def.RightBox_BottomLeft = _NodeDefs[i].RightBox_BottomLeft - currentOffset;
                 def.RightBox_TopRight = _NodeDefs[i].RightBox_TopRight - currentOffset;
                 def.LeftBox_BottomLeft = _NodeDefs[i].LeftBox_BottomLeft - currentOffset;

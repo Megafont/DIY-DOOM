@@ -24,6 +24,8 @@ namespace DIY_DOOM
         private InputAction _LeftAction;
         private InputAction _RightAction;
         private InputAction _EscapeAction;
+        private InputAction _ToggleCameraAction;
+        private InputAction _CameraLookAction;
         // ----------------------------------------------------------------------------------------------------
 
 
@@ -40,16 +42,22 @@ namespace DIY_DOOM
             _RightAction = _InputActionMap["Right"];
 
             _EscapeAction = _InputActionMap["Escape"];
+
+            _ToggleCameraAction = _InputActionMap["ToggleCamera"];
+            _CameraLookAction = _InputActionMap["CameraLook"];
         }
 
         void Update()
         {
-            Up = _UpAction.WasPressedThisFrame();
-            Down = _DownAction.WasPressedThisFrame();
-            Left = _LeftAction.WasPressedThisFrame();
-            Right = _RightAction.WasPressedThisFrame();
+            Up = _UpAction.IsPressed();
+            Down = _DownAction.IsPressed();
+            Left = _LeftAction.IsPressed();
+            Right = _RightAction.IsPressed();
 
             Escape = _EscapeAction.WasPerformedThisFrame();
+            
+            ToggleCamera = _ToggleCameraAction.WasPressedThisFrame();
+            CameraLook = _CameraLookAction.ReadValue<Vector2>();
         }
 
         public void ResetInputs()
@@ -60,6 +68,9 @@ namespace DIY_DOOM
             Right = false;
 
             Escape = false;
+
+            ToggleCamera = false;
+            CameraLook = Vector2.zero;
         }
 
         private void OnApplicationFocus(bool hasFocus)
@@ -78,6 +89,11 @@ namespace DIY_DOOM
         public bool Down { get; private set; }
         public bool Left { get; private set; }
         public bool Right { get; private set; }
+        
         public bool Escape { get; private set; }
+        
+        public bool ToggleCamera { get; private set; }
+        
+        public Vector2 CameraLook { get; private set; }
     }
 }

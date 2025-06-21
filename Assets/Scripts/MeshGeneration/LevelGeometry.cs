@@ -12,7 +12,7 @@ namespace DIY_DOOM.MeshGeneration
 {
     public class LevelGeometry : MonoBehaviour
     {
-        private Map _Map;
+        public Map Map { get; private set; }
 
 
 
@@ -21,7 +21,7 @@ namespace DIY_DOOM.MeshGeneration
             if (map == null)
                 throw new ArgumentNullException(nameof(map));
 
-            _Map = map;
+            Map = map;
 
             MeshGenOutput output = MeshGenerator.GenerateMapMesh(map);
 

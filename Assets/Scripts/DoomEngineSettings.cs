@@ -43,6 +43,9 @@ namespace DIY_DOOM
         public FilterMode TextureFilterMode = FilterMode.Point;
         public TextureWrapMode TextureWrapMode = TextureWrapMode.Repeat;
         public Color32 NewTextureFillColor = Color.clear;
+        [Tooltip("This adjusts how bright the sector lighting is. This value is a percentage. So a value of 1 means it will use the exact sector light value from the WAD file. A value of 0.75f would make it use a value 3/4 of that value.")]
+        [Range(0f, 1f)]
+        public float SectorLightingAdjustment = 0.75f;
 
         [Space(10)]
 
@@ -83,6 +86,9 @@ namespace DIY_DOOM
 
         [Tooltip("Whether or not floor faces will be generated.")]
         public bool EnableCeilingGeneration = true;
+        
+        [Tooltip("Whether or not to enable sector lighting.")]
+        public bool EnableSectorLighting = true;
 
     }
 }

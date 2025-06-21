@@ -25,21 +25,27 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
         /// <param name="vertices">The vertices of the polygon.</param>
         /// <param name="meshData">The <see cref="MeshData"/> object to store the generated triangles in.</param>
         /// <param name="yValue">The y position or elevation of the polygon.</param>
+        /// <param name="flipWindingOrder">If true, the winding order of each triangle of the polygon is inverted. This is used to change the direction the polygon is facing.</param>
         /// <returns>The result code indicating whether the triangulation was successful or what error it failed with.</returns>
-        public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
+        public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f, bool flipWindingOrder = false)
         {
+            Triangulator_Polygon.TriangulateDelegate triangulateDelegate = !flipWindingOrder ? Triangulator_Polygon.GenerateTriangle 
+                                                                                             : Triangulator_Polygon.GenerateTriangleReversed;
+            
             for (int i = 1; i < vertices.Count - 1; i++)
             {
                 // Generate the triangle.
-                Triangulator_Polygon.GenerateTriangle(meshData, 
-                                                      vertices[0], 
-                                                      vertices[i], 
-                                                      vertices[i + 1], 
-                                                      yValue);
+                triangulateDelegate(meshData,
+                    vertices[0],
+                    vertices[i],
+                    vertices[i + 1],
+                    yValue);
 
-            } // end for i, j
+            } // end for i
+            
 
             return TriangulationResults.Succeeded;
         }
+        
     }
 }

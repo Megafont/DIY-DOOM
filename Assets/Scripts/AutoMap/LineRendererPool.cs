@@ -61,7 +61,10 @@ namespace DIY_DOOM.AutoMap
 
         private LineRenderer CreateLineRenderer()
         {
-            return Object.Instantiate(_LineRendererPrefab, _ActiveLineRenderersParent);
+            LineRenderer lineRenderer = Object.Instantiate(_LineRendererPrefab, _ActiveLineRenderersParent);
+            lineRenderer.gameObject.layer = LayerMask.NameToLayer("AutoMapLines");
+
+            return lineRenderer;
         }
 
         private void OnTakeFromPool(LineRenderer lineRenderer)

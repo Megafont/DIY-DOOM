@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: DefaultDoomEngineSettings
   m_EditorClassIdentifier: 
   WAD_Path: WADS/DOOM.wad
-  MapToLoad: E1M1
+  MapToLoad: E4M2
   MapScaleFactor: 32
   LevelMeshPrefab: {fileID: 5170632311363796044, guid: b0897022c2029934d862d956e1d4053a, type: 3}
   DOOM_MaterialPrefab: {fileID: 2100000, guid: 161ada58f2e64fe41b23cbffa000a235, type: 2}
@@ -24,10 +24,14 @@ MonoBehaviour:
   NewTextureFillColor:
     serializedVersion: 2
     rgba: 0
+  SectorLightingAdjustment: 0.75
   LevelGeometryObject: {fileID: 0}
   EnableAutoMap: 1
-  EnableTextureRenderingTester: 1
+  EnableTextureRenderingTester: 0
   EnableGeometryGeneration: 1
   EnableWallGeneration_LowerTextures: 1
   EnableWallGeneration_MiddleTextures: 1
   EnableWallGeneration_UpperTextures: 1
+  EnableFloorGeneration: 1
+  EnableCeilingGeneration: 1
+  EnableSectorLighting: 1

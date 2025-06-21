@@ -22,16 +22,17 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
         /// <param name="vertices">The vertices of the polygon.</param>
         /// <param name="meshData">The <see cref="MeshData"/> object to store the generated triangles in.</param>
         /// <param name="yValue">The y position or elevation of the polygon.</param>
+        /// <param name="flipWindingOrder">If true, the winding order of each triangle of the polygon is inverted. This is used to change the direction the polygon is facing.</param>
         /// <remarks>
         /// The passed in polygon MUST be clockwise, otherwise this algorithm will try to triangulate the area
         /// outside the polygon, which is no good! See the article linked above for information on what
         /// else can cause problems for this algorithm, such as a polygon with lines that cross.
         /// </remarks>
         /// <returns>The result code indicating whether the triangulation was successful or what error it failed with.</returns>
-        public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f)
+        public static TriangulationResults Triangulate(List<Vector2> vertices, MeshData meshData, float yValue = 0.0f, bool flipWindingOrder = false)
         {
             int prevIndex = -1;
-            int curIndex = -1;
+            int curIndex = 1;
             int nextIndex = -1;
 
             int curVertCount = vertices.Count;
@@ -42,6 +43,10 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
 
             float yOffset = 0;
             
+            
+            Triangulator_Polygon.TriangulateDelegate triangulateDelegate = !flipWindingOrder ? Triangulator_Polygon.GenerateTriangle 
+                                                                                             : Triangulator_Polygon.GenerateTriangleReversed;
+
             
             /*
             // Remove consecutive duplicate verts.
@@ -146,9 +151,10 @@ namespace DIY_DOOM.MeshGeneration.Triangulation.Base
 
 
                     // We've found a good candidate corner (aka ear), so generate the triangle.
-                    Triangulator_Polygon.GenerateTriangle(meshData, vPrev, vCurrent, vNext, yValue + yOffset);
-                    yOffset += 0.5f;
+                    triangulateDelegate(meshData, vPrev, vCurrent, vNext, yValue + yOffset);
 
+                    //Debug.Log($"Clipped an ear at vertex:   {vCurrent}    Vertex Index:{curIndex}");
+                    
                     // Clip the ear (corner) off of the parent polygon by removing the center vertex.
                     verts.RemoveAt(curIndex);
 

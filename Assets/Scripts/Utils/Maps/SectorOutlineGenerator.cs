@@ -47,9 +47,9 @@ namespace DIY_DOOM.Utils.Maps
 
 
 
-        private static List<SegDef> _AllSectorInFacingSegs = new List<SegDef>();
-        private static List<SegDef> _AllSectorOutFacingSegs = new List<SegDef>();
-        private static List<SegDef> _AllSectorSegs = new List<SegDef>();
+        private static List<LineDef> _AllSectorInFacingLineDefs = new List<LineDef>();
+        private static List<LineDef> _AllSectorOutFacingLineDefs = new List<LineDef>();
+        private static List<LineDef> _AllSectorLineDefs = new List<LineDef>();
 
 
 
@@ -73,7 +73,12 @@ namespace DIY_DOOM.Utils.Maps
             _SectorIndex = sectorIndex;
             _SectorDef = _Map.GetSectorDef((uint) _SectorIndex);
 
-
+            if (_SectorDef == null)
+            {
+                Debug.LogError($"Invalid sector index ({_SectorIndex})!: Skipping outline determination for this sector.");
+                return;
+            }
+            
             FindAllOutlines();
 
             Debug.Log($"Outlines: {Holes.Count}");
@@ -114,25 +119,43 @@ namespace DIY_DOOM.Utils.Maps
                 result = IncorporateHoles();
             }
 
+            // Check if the outline is clockwise.
+            bool result2 = Triangulator_Polygon.GatherPolygonData(SectorOutline, out PolygonDetails polygonDetails);
+            if (!result2)
+            {
+                Debug.LogError($"Failed to gather polygon data for Sector outline of sector with ID {_SectorDef.ID}!");
+                return;
+            }
+
+            // If the newly generated sector outline is not in clockwise order, then reverse it.
+            // This is necessary, as the floor/ceiling generation code will try to triangulate the outside of the outline
+            // rather than the inside if the outline is counter-clockwise.
+            if (!polygonDetails.IsClockwise)
+            {
+                Debug.Log("Sector outline is not clockwise! Reversing it.");
+                SectorOutline.Reverse();
+            }
+
             // Fill in the SectorOutline field in the SectorDef object.
+            _SectorDef.SectorOutline.Clear();
             _SectorDef.SectorOutline.AddRange(SectorOutline);
 
             Debug.Log($"OrigVerts: {originalVerts}    NewVerts: {_SectorDef.SectorOutline.Count}");
         }
 
-        private static int AddRangeWithoutDuplicates(List<SegDef> list, List<SegDef> rangeToAdd)
+        private static int AddRangeWithoutDuplicates(List<LineDef> list, List<LineDef> rangeToAdd)
         {
             int c = 0;
 
-            foreach (SegDef segDef in rangeToAdd)
+            foreach (LineDef lineDef in rangeToAdd)
             {
                 bool isDuplicate = false;
 
                 
                 for (int i = 0; i < list.Count; i++)
                 {
-                    if ((list[i].StartVertexID == segDef.StartVertexID && list[i].EndVertexID == segDef.EndVertexID) ||
-                        (list[i].StartVertexID == segDef.EndVertexID && list[i].EndVertexID == segDef.StartVertexID))
+                    if ((list[i].StartVertexID == lineDef.StartVertexID && list[i].EndVertexID == lineDef.EndVertexID) ||
+                        (list[i].StartVertexID == lineDef.EndVertexID && list[i].EndVertexID == lineDef.StartVertexID))
                     {
                         isDuplicate = true;
                         c++;
@@ -142,7 +165,7 @@ namespace DIY_DOOM.Utils.Maps
                 
 
                 if (!isDuplicate)
-                    list.Add(segDef);
+                    list.Add(lineDef);
 
             } // end foreach lineDef
 
@@ -162,48 +185,48 @@ namespace DIY_DOOM.Utils.Maps
             float discarded = 0;
 
 
-            ClearAllSegs();
-            discarded += AddRangeWithoutDuplicates(_AllSectorInFacingSegs, _SectorDef.FrontSegs);
-            discarded += AddRangeWithoutDuplicates(_AllSectorOutFacingSegs, _SectorDef.BackSegs);
-            AddRangeWithoutDuplicates(_AllSectorSegs, _SectorDef.FrontSegs);
-            AddRangeWithoutDuplicates(_AllSectorSegs, _SectorDef.BackSegs);
+            ClearAllLineDefs();
+            discarded += AddRangeWithoutDuplicates(_AllSectorInFacingLineDefs, _SectorDef.FrontLineDefs);
+            discarded += AddRangeWithoutDuplicates(_AllSectorOutFacingLineDefs, _SectorDef.BackLineDefs);
+            discarded += AddRangeWithoutDuplicates(_AllSectorLineDefs, _SectorDef.FrontLineDefs);
+            discarded += AddRangeWithoutDuplicates(_AllSectorLineDefs, _SectorDef.BackLineDefs);
 
-
-            Debug.Log("SECTOR: " + _SectorIndex);
-            Debug.Log($"Sector Segs: {_SectorDef.FrontSegs.Count} + {_SectorDef.BackSegs.Count} = {_SectorDef.FrontSegs.Count + _SectorDef.BackSegs.Count} - {discarded} = {_SectorDef.FrontSegs.Count + _SectorDef.BackSegs.Count - discarded}    Actual: {_AllSectorSegs.Count}");            
-            for (int i = 0; i < _AllSectorSegs.Count; i++)
+            Debug.Log($"<color=yellow>SECTOR: {_SectorIndex}</color>");
+            Debug.Log($"Sector LineDefs: {_AllSectorLineDefs.Count} - {discarded} = {_AllSectorLineDefs.Count - discarded}");
+            
+            for (int i = 0; i < _AllSectorLineDefs.Count; i++)
             {
-                SegDef segDef = _AllSectorSegs[i];
-                LineDef lineDef = _Map.GetLineDef(_AllSectorSegs[i].LineDefID);
-                Debug.Log($"    Seg[{i}] ID={segDef.ID,5}    LineDefID: {segDef.LineDefID,6}    [{lineDef.StartVertexID}]{_Map.GetVertex(lineDef.StartVertexID), 30} {new string(' ', 20)} -> [{lineDef.EndVertexID}]{_Map.GetVertex(lineDef.EndVertexID), 30}");
-                Debug.Log($"                      SegOffset: {segDef.Offset,6} {segDef.PercentStartShifted * 100}%    [{segDef.StartVertexID}]{_Map.GetVertex(segDef.StartVertexID), 30}{segDef.StartPoint} -> [{segDef.EndVertexID}]{_Map.GetVertex(segDef.EndVertexID), 30}    {lineDef.FrontSideDefIndex}    {lineDef.BackSideDefIndex}");
+                LineDef lineDef = _AllSectorLineDefs[i];
+                Debug.Log($"    Line[{i}] [{lineDef.StartVertexID}]{_Map.GetVertex(lineDef.StartVertexID), 30} {new string(' ', 20)} -> [{lineDef.EndVertexID}]{_Map.GetVertex(lineDef.EndVertexID), 30}");
+                Debug.Log($"               {lineDef.FrontSideDefIndex}    {lineDef.BackSideDefIndex}");
             }
             
 
-            if (_AllSectorSegs.Count < 1)
+            if (_AllSectorLineDefs.Count < 1)
             {
-                Debug.LogWarning("This sector has no segs! Skipping it...");
+                Debug.LogWarning("This sector has no line defs! Skipping it...");
                 return;
             }
 
             int holeIndex = -1;
             int invalidOutlines = 0;
-            Vector3 firstSegStartPoint = Vector3.zero;
-            Vector3 lastSegEndPoint = Vector3.zero;
-            
-            while (_AllSectorSegs.Count > 0)
+            Vector3 firstLineDefStartPoint = Vector3.zero;
+            Vector3 lastLineDefEndPoint = Vector3.zero;
+
+
+            while (_AllSectorLineDefs.Count > 0)
             {
                 holeIndex++;
 
-                firstSegStartPoint = _Map.GetVertex(_AllSectorSegs[0].StartVertexID);
-                lastSegEndPoint = _Map.GetVertex(_AllSectorSegs[0].EndVertexID);
-                RemoveSeg(_AllSectorSegs[0]);
+                firstLineDefStartPoint = _Map.GetVertex(_AllSectorLineDefs[0].StartVertexID);
+                lastLineDefEndPoint = _Map.GetVertex(_AllSectorLineDefs[0].EndVertexID);
+                RemoveLineDef(_AllSectorLineDefs[0]);
 
                 HoleData newHoleData = new HoleData();
                 newHoleData.Vertices = new List<Vector2>();
                 newHoleData.ID = holeIndex + 1;
-                newHoleData.Vertices.Add(MapUtils.Point3dTo2d(firstSegStartPoint));
-                newHoleData.Vertices.Add(MapUtils.Point3dTo2d(lastSegEndPoint));
+                newHoleData.Vertices.Add(MapUtils.Point3dTo2d(firstLineDefStartPoint));
+                newHoleData.Vertices.Add(MapUtils.Point3dTo2d(lastLineDefEndPoint));
 
 
                 bool curOutlineIsDone = false;
@@ -211,9 +234,9 @@ namespace DIY_DOOM.Utils.Maps
                 {
                     curOutlineIsDone = false;
                     
-                    int nextIndex = FindNextSeg(_AllSectorInFacingSegs, newHoleData, firstSegStartPoint, ref lastSegEndPoint);
+                    int nextIndex = FindNextLineDef(_AllSectorInFacingLineDefs, newHoleData, firstLineDefStartPoint, ref lastLineDefEndPoint);
                     if (nextIndex < 0)
-                        nextIndex = FindNextSeg(_AllSectorOutFacingSegs, newHoleData, firstSegStartPoint, ref lastSegEndPoint);
+                        nextIndex = FindNextLineDef(_AllSectorOutFacingLineDefs, newHoleData, firstLineDefStartPoint, ref lastLineDefEndPoint);
 
 
                     // Did we find the next segment in this outline?
@@ -222,16 +245,16 @@ namespace DIY_DOOM.Utils.Maps
                         int vertCount = newHoleData.Vertices.Count;
 
                         // Is this the last seg in this outline?
-                        if (lastSegEndPoint == firstSegStartPoint)
+                        if (lastLineDefEndPoint == firstLineDefStartPoint)
                         {
-                            if (!IsValidNextSeg(newHoleData.Vertices[vertCount - 1] - newHoleData.Vertices[vertCount - 2],
-                                firstSegStartPoint - lastSegEndPoint))
+                            if (!IsValidNextLineDef(newHoleData.Vertices[vertCount - 1] - newHoleData.Vertices[vertCount - 2],
+                                firstLineDefStartPoint - lastLineDefEndPoint))
                             {
-                                Debug.Log("BREAK (INNER-INVALID END SEG)");
+                                Debug.Log("BREAK (INNER-INVALID END LINEDEF)");
                                 break;
                             }
 
-                            Debug.Log($"DONE (INNER)    {lastSegEndPoint == firstSegStartPoint}    {IsValidNextSeg(newHoleData.Vertices[vertCount - 1] - newHoleData.Vertices[vertCount - 2], firstSegStartPoint - lastSegEndPoint)}");
+                            Debug.Log($"DONE (INNER)    {lastLineDefEndPoint == firstLineDefStartPoint}    {IsValidNextLineDef(newHoleData.Vertices[vertCount - 1] - newHoleData.Vertices[vertCount - 2], firstLineDefStartPoint - lastLineDefEndPoint)}");
 
                             // It is the last seg in this outline, so just break out of the inner while loop.
                             curOutlineIsDone = true;
@@ -251,7 +274,7 @@ namespace DIY_DOOM.Utils.Maps
                 Triangulator_Polygon.GatherPolygonData(newHoleData.Vertices, out newHoleData.PolygonDetails);
 
                 // If the current loop is less than three segments long, then it is invalid so discard it.
-                if (IsValidHole(newHoleData, lastSegEndPoint, firstSegStartPoint))
+                if (IsValidHole(newHoleData, lastLineDefEndPoint, firstLineDefStartPoint))
                 {
                     // This outline is finished, so add it into the Holes list, and then gather some basic information about it.
                     Holes.Add(newHoleData.ID, newHoleData);
@@ -274,7 +297,7 @@ namespace DIY_DOOM.Utils.Maps
                     invalidOutlines++;
                 }
 
-                if (_AllSectorSegs.Count < 1)
+                if (_AllSectorLineDefs.Count < 1)
                 {
                     Debug.Log("BREAK (OUTER)");
                     break;
@@ -285,26 +308,26 @@ namespace DIY_DOOM.Utils.Maps
             Debug.Log($"Holes Found: {Holes.Count}    Invalid Outlines Removed: {invalidOutlines}");
         }
 
-        private static bool RemoveSeg(SegDef segDef)
+        private static bool RemoveLineDef(LineDef lineDef)
         {
             bool removed = false;
 
 
-            if (_AllSectorSegs.Contains(segDef))
+            if (_AllSectorLineDefs.Contains(lineDef))
             {
-                _AllSectorSegs.Remove(segDef);
+                _AllSectorLineDefs.Remove(lineDef);
                 removed = true;
             }
 
-            if (_AllSectorInFacingSegs.Contains(segDef))
+            if (_AllSectorInFacingLineDefs.Contains(lineDef))
             {
-                _AllSectorInFacingSegs.Remove(segDef);
+                _AllSectorInFacingLineDefs.Remove(lineDef);
                 removed = true;
             }
 
-            if (_AllSectorOutFacingSegs.Contains(segDef))
+            if (_AllSectorOutFacingLineDefs.Contains(lineDef))
             {
-                _AllSectorOutFacingSegs.Remove(segDef);
+                _AllSectorOutFacingLineDefs.Remove(lineDef);
                 removed = true;
             }
 
@@ -312,11 +335,11 @@ namespace DIY_DOOM.Utils.Maps
             return removed;
         }
 
-        private static void ClearAllSegs()
-        {            
-            _AllSectorInFacingSegs.Clear();
-            _AllSectorOutFacingSegs.Clear();
-            _AllSectorSegs.Clear();
+        private static void ClearAllLineDefs()
+        {
+            _AllSectorInFacingLineDefs.Clear();
+            _AllSectorOutFacingLineDefs.Clear();
+            _AllSectorLineDefs.Clear();
         }
 
         /// <summary>
@@ -407,16 +430,16 @@ namespace DIY_DOOM.Utils.Maps
             return largestHoleID;
         }
 
-        private static int FindNextSeg(List<SegDef> segs, HoleData holeData, Vector3 firstSegStartPoint, ref Vector3 lastSegEndPoint)
+        private static int FindNextLineDef(List<LineDef> lineDefs, HoleData holeData, Vector3 firstLineDefStartPoint, ref Vector3 lastLineDefEndPoint)
         {
             int vertCount = holeData.Vertices.Count;
 
-            for (int i = 0; i < segs.Count; i++)
+            for (int i = 0; i < lineDefs.Count; i++)
             {
-                SegDef curSeg = segs[i];
+                LineDef curLineDef = lineDefs[i];
                 
-                Vector3 startVertex = _Map.GetVertex(curSeg.StartVertexID);
-                Vector3 endVertex = _Map.GetVertex(curSeg.EndVertexID);
+                Vector3 startVertex = _Map.GetVertex(curLineDef.StartVertexID);
+                Vector3 endVertex = _Map.GetVertex(curLineDef.EndVertexID);
 
                 bool matched = false;
                 Vector3 vertToAdd = Vector3.zero;
@@ -424,49 +447,49 @@ namespace DIY_DOOM.Utils.Maps
 
 
                 // Is this the next seg in this outline?
-                if (startVertex == lastSegEndPoint)
+                if (startVertex == lastLineDefEndPoint)
                 {
                     matched = true;
                     vertToAdd = endVertex;
                     otherVert = startVertex;
 
-                    Debug.Log($"SEG MATCH [{curSeg.ID}]: START");
+                    Debug.Log($"LINEDEF MATCH [{i}]: START");
                 }
-                else if (endVertex == lastSegEndPoint)
+                else if (endVertex == lastLineDefEndPoint)
                 {
                     matched = true;
                     vertToAdd = startVertex;
                     otherVert = endVertex;
 
-                    Debug.Log($"SEG MATCH [{curSeg.ID}]: END");
+                    Debug.Log($"LINEDEF MATCH [{i}]: END");
 
                 }
                 else // No match was found
                 {
-                    //Debug.Log($"SEG MISMATCH [{curSeg.ID}]");
+                    //Debug.Log($"LINEDEF MISMATCH [{i}]");
                     continue;
                 }
 
 
-                Debug.Log($"{otherVert} | {vertToAdd}    ||    {firstSegStartPoint} | {lastSegEndPoint}");
+                Debug.Log($"{otherVert} | {vertToAdd}    ||    {firstLineDefStartPoint} | {lastLineDefEndPoint}");
 
                 
                 if (matched &&
-                    IsValidNextSeg(holeData.Vertices[vertCount - 1] - holeData.Vertices[vertCount - 2],
+                    IsValidNextLineDef(holeData.Vertices[vertCount - 1] - holeData.Vertices[vertCount - 2],
                                    vertToAdd - otherVert))
                 {
                     // We found the next segment in this outline, so add it to the outline
                     // if the outline is not yet complete. If the start and end points are equal, then it is finished.
                     // In that case we don't add this point, since it is the same as the starting point.
-                    if (vertToAdd != firstSegStartPoint)
+                    if (vertToAdd != firstLineDefStartPoint)
                     {
                         holeData.Vertices.Add(MapUtils.Point3dTo2d(vertToAdd));
                     }
 
 
-                    lastSegEndPoint = vertToAdd;
+                    lastLineDefEndPoint = vertToAdd;
 
-                    RemoveSeg(segs[i]);
+                    RemoveLineDef(lineDefs[i]);
 
                     // We found the next seg in this outline, so return it's index;
                     return i;
@@ -487,20 +510,20 @@ namespace DIY_DOOM.Utils.Maps
         /// <param name="lastSeg">The last segment we found so far.</param>
         /// <param name="possibleNextSeg">The possible next segment that needs to be checked.</param>
         /// <returns>True if the possible next seg is valid.</returns>
-        private static bool IsValidNextSeg(Vector3 lastSeg, Vector3 possibleNextSeg)
+        private static bool IsValidNextLineDef(Vector3 lastLineDef, Vector3 possibleNextLineDef)
         {
-            float dot = Vector3.Dot(lastSeg.normalized, possibleNextSeg.normalized);
+            float dot = Vector3.Dot(lastLineDef.normalized, possibleNextLineDef.normalized);
             if (dot == -1.0f)
                 return false;
             else
                 return true;
         }
 
-        private static bool IsValidHole(HoleData holeData, Vector3 lastSegEndPoint, Vector3 firstSegStartPoint)
+        private static bool IsValidHole(HoleData holeData, Vector3 lastLineDefEndPoint, Vector3 firstLineDefStartPoint)
         {
-            Debug.Log($"<color=red>{holeData.Vertices == null} || {holeData.Vertices.Count < 3} || {holeData.PolygonDetails == null} || {lastSegEndPoint != firstSegStartPoint}</color>");
+            Debug.Log($"<color=red>{holeData.Vertices == null} || {holeData.Vertices.Count < 3} || {holeData.PolygonDetails == null} || {lastLineDefEndPoint != firstLineDefStartPoint}</color>");
             // Does the hole's outline have at least 3 vertices, and form a complete circuit?
-            if (holeData.Vertices == null || holeData.Vertices.Count < 3 || holeData.PolygonDetails == null || lastSegEndPoint != firstSegStartPoint)
+            if (holeData.Vertices == null || holeData.Vertices.Count < 3 || holeData.PolygonDetails == null || lastLineDefEndPoint != firstLineDefStartPoint)
                 return false;
 
 
@@ -564,8 +587,8 @@ namespace DIY_DOOM.Utils.Maps
             {
                 _SortedHolesList.Add(pair.Value);
             }
-
-
+            
+            
             // Incorporate the hole outlines into the sector's outline one by one.
             while(true)
             {
@@ -588,9 +611,8 @@ namespace DIY_DOOM.Utils.Maps
 
                 _SortedHolesList.RemoveAt(0);
 
-
                 // If all holes have been incorporated into the sector's outline, then break out of this loop.
-                if (finishedHolesIDs.Count >= Holes.Count || _SortedHolesList.Count < 1)
+                if (/*finishedHolesIDs.Count >= Holes.Count ||*/ _SortedHolesList.Count < 1)
                     break;
 
             } // end while
@@ -681,16 +703,21 @@ namespace DIY_DOOM.Utils.Maps
                         _SortedHolesList.Remove(curHoleData);
 
                         // Insert this hole into the proper spot in the list based on the length of its shortest connector line segment.
+                        bool inserted = false;
                         for (int i = 0; i < _SortedHolesList.Count; i++)
                         {
                             if (curHoleData.ClosestConnectorData.Length <= _SortedHolesList[i].ClosestConnectorData.Length)
                             {
                                 _SortedHolesList.Insert(i, curHoleData);
+                                inserted = true;
                                 break;
                             }
 
                         } // end for i
 
+                        // If the hole data wasn't reinserted in the list in the loop above, then we need to just add it to the end of the list, as that is its correct position.
+                        if (!inserted)
+                            _SortedHolesList.Add(curHoleData);
                     }
                 }
                 else

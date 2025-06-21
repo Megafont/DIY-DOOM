@@ -32,17 +32,17 @@ namespace DIY_DOOM.AutoMap
             new Color32(255, 255, 255, 255),
             new Color32(128, 128, 128, 255),
         };
-
-
-        [Header("References")]
-        [SerializeField]
-        private Camera _AutoMapCamera;
+        
         
         [Header("Prefabs")]
         [SerializeField]
         private LineRenderer _LineRendererPrefab;
         [SerializeField]
-        GameObject _PlayerPrefab;
+        private GameObject _PlayerObject;
+
+        
+        
+        private GameController _GameController;
 
 
         private LineRendererPool _LineRendererPool;
@@ -50,41 +50,37 @@ namespace DIY_DOOM.AutoMap
         private Map _Map;
 
         private Transform _Container_Root;
-        private Transform _Container_ActiveLineRenderers;
-        private Transform _Container_InactiveLineRenderers;
+        private Transform _Container_Walls;
+        private Transform _Container_Walls_Active;
+        private Transform _Container_Walls_Inactive;
         private Transform _Container_Things;
+        private Transform _Container_Things_Active;
+        private Transform _Container_Things_Inactive;
 
-        private GameObject _PlayerObject;
 
 
         private void Awake()
         {
+            _GameController = _PlayerObject.GetComponentInChildren<GameController>();
+            
             CreateContainerObjects();
-
+            
             _LineRendererPool = new LineRendererPool(_LineRendererPrefab.gameObject, 
-                                                     _Container_ActiveLineRenderers,
-                                                     _Container_InactiveLineRenderers);
-
-            _PlayerObject = Instantiate(_PlayerPrefab);
-            _PlayerObject.transform.SetParent(_Container_Things);
-            _PlayerObject.SetActive(false);
-
-            _AutoMapCamera.transform.SetParent(_PlayerObject.transform);
+                                                     _Container_Walls_Active,
+                                                     _Container_Walls_Inactive);
         }
 
         private void CreateContainerObjects()
         {
-            _Container_Root = new GameObject("Walls").transform;
-            _Container_Root.transform.SetParent(transform);
-
-            _Container_ActiveLineRenderers = new GameObject("Active").transform;
-            _Container_ActiveLineRenderers.transform.SetParent(_Container_Root.transform);
+            _Container_Root = GameObject.Find("AutoMap").transform;
             
-            _Container_InactiveLineRenderers = new GameObject("Inactive").transform;
-            _Container_InactiveLineRenderers.transform.SetParent(_Container_Root.transform);
-
-            _Container_Things = new GameObject("Things").transform;
-            _Container_Things.transform.SetParent(transform);
+            _Container_Walls = _Container_Root.Find("Walls");
+            _Container_Walls_Active = _Container_Walls.Find("Active");
+            _Container_Walls_Inactive = _Container_Walls.Find("Inactive");            
+            
+            _Container_Things = _Container_Root.Find("Things");
+            _Container_Things_Active = _Container_Things.Find("Active");
+            _Container_Things_Inactive = _Container_Things.Find("Inactive");
         }
 
         public void DrawMap(Map map, Color color, float yOffset = 0f)
@@ -95,12 +91,15 @@ namespace DIY_DOOM.AutoMap
             
             DrawWalls(color, yOffset);
             DrawPlayer();
-
+            DrawBinaryspacePartition(_Map.GetNodeDef(_Map.NodesCount - 1));
+            
+            /*
             for (int i = 0; i <= 15; i++)
             {
                 Color sectorColor = new Color32((byte)UnityEngine.Random.Range(0, 256), (byte)UnityEngine.Random.Range(0, 256), (byte)UnityEngine.Random.Range(0, 256), 255);
                 DrawSector(_Map.GetSectorDef((uint) i), sectorColor, yOffset + 1 + (i * LINE_DEPTH_INCREMENT));
             }
+            */
 
             //DrawBinaryspacePartition(_Map.GetNodeDef(_Map.NodesCount - 1));
         }
@@ -127,13 +126,13 @@ namespace DIY_DOOM.AutoMap
         {
             
             //  RIGHT BOX / SPACE PARTITION
-            Vector2 rightBox_BottomLeft = node.RightBox_BottomLeft;
-            Vector2 rightBox_TopRight = node.RightBox_TopRight;
+            Vector3 rightBox_BottomLeft = node.RightBox_BottomLeft;
+            Vector3 rightBox_TopRight = node.RightBox_TopRight;
 
 
             // LEFT BOX / SPACE PARTITION
-            Vector2 leftBox_BottomLeft = node.LeftBox_BottomLeft;
-            Vector2 leftBox_TopRight = node.LeftBox_TopRight;
+            Vector3 leftBox_BottomLeft = node.LeftBox_BottomLeft;
+            Vector3 leftBox_TopRight = node.LeftBox_TopRight;
 
 
             // Render the boxes.
@@ -149,8 +148,8 @@ namespace DIY_DOOM.AutoMap
 
 
             // THE SEPARATOR LINE THAT THE SPACE PARTITION IS BASED ON
-            Vector2 partitionStart = node.PartitionStart;
-            Vector2 partitionEnd = node.PartitionStart + node.DeltaToPartitionEnd;
+            Vector3 partitionStart = node.PartitionStart;
+            Vector3 partitionEnd = node.PartitionEnd;
 
             // Render the line.
             DrawLine(partitionStart, 
@@ -182,7 +181,7 @@ namespace DIY_DOOM.AutoMap
                          color,
                          yOffset);
 
-                color.b += 5;
+                //color.b += 5;
             }
 
 
@@ -329,20 +328,17 @@ namespace DIY_DOOM.AutoMap
 
         public void ClearAllThings()
         {
-            _PlayerObject.SetActive(false);
+            //_PlayerObject.SetActive(false);
         }
 
         public void DrawPlayer()
         {
-            _PlayerObject.transform.position = _Map.GetPlayerSpawn(0).Position;
+            //_PlayerObject.transform.position = _Map.GetPlayerSpawn(0).Position;
+            _GameController.UpdatePlayerPosition(_Map.GetPlayerSpawn(0).Position);
             _PlayerObject.SetActive(true);
         }
 
-        // *****************************************************************
-        // TODO: REMOVE DRAWLINE RETURNING A LINE RENDERER!!!
-        // *****************************************************************
-
-        public LineRenderer DrawLine(Vector3 start, Vector3 end, Color color, float yOffset = 0f)
+        public void DrawLine(Vector3 start, Vector3 end, Color color, float yOffset = 0f)
         {
             start.y += yOffset;
             end.y += yOffset;
@@ -355,8 +351,6 @@ namespace DIY_DOOM.AutoMap
 
             line.SetPositions(new Vector3[] { start,
                                               end });
-
-            return line;
         }
 
         public void DrawBox(Vector3 bottomLeft, Vector3 topRight, Color color, float yOffset = 0f)
